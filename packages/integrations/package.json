@@ -1,0 +1,29 @@
+{
+  "name": "@deseo/integrations",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./github": "./src/github/client.ts",
+    "./gitlab": "./src/gitlab/client.ts",
+    "./strapi": "./src/strapi/client.ts",
+    "./wordpress": "./src/wordpress/client.ts",
+    "./payload": "./src/payload/client.ts",
+    "./gsc": "./src/gsc/client.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@deseo/types": "workspace:*",
+    "@deseo/ast": "workspace:*",
+    "@octokit/rest": "^20.0.2",
+    "axios": "^1.6.7"
+  },
+  "devDependencies": {
+    "@deseo/config": "workspace:*",
+    "@types/node": "^20.11.16",
+    "typescript": "^5.3.3"
+  }
+}
