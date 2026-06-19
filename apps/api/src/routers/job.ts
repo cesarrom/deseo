@@ -68,7 +68,7 @@ export const jobRouter = router({
           .values({
             clientId: input.clientId,
             type: input.type,
-            input: input.input,
+            inputPayload: input.input,
             status: 'pending',
           })
           .returning();
@@ -108,7 +108,7 @@ export const jobRouter = router({
         await ctx.withDB(async (tx) => {
           await tx
             .update(jobs)
-            .set({ status: 'failed', error: String(error) })
+            .set({ status: 'failed', errorDetails: String(error) })
             .where(eq(jobs.id, job.id));
         });
       }
@@ -128,9 +128,14 @@ export const jobRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
       return await ctx.withDB(async (tx) => {
+        const updateData: any = {
+          status: data.status,
+          ...(data.output !== undefined ? { outputPayload: data.output } : {}),
+          ...(data.error !== undefined ? { errorDetails: data.error } : {}),
+        };
         const [job] = await tx
           .update(jobs)
-          .set(data)
+          .set(updateData)
           .where(eq(jobs.id, id))
           .returning();
         return job;

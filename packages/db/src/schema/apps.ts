@@ -1,25 +1,32 @@
-import { pgTable, text, timestamp, uuid, jsonb, pgPolicy } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, jsonb, pgPolicy, boolean, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
 import { clients } from './clients';
 
-export const appType = ['feature:git', 'feature:cms', 'feature:analytics'] as const;
-
-export const apps = pgTable('apps', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name').notNull(),
-  slug: text('slug').notNull().unique(),
-  description: text('description'),
-  type: text('type', { enum: appType }).notNull(),
-  baseUrl: text('base_url').notNull(), // The connector's root URL
-  configUrl: text('config_url').notNull(), // Where to send users to configure (relative to baseUrl)
-  webhookUrl: text('webhook_url'), // Where the hub sends events to the connector
-  clientId: text('client_id').notNull().unique(),
-  clientSecret: text('client_secret').notNull(),
-  isInternal: text('is_internal').notNull().default('false'), // Mark if it's our own connector
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+export const apps = pgTable(
+  'apps',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    slug: text('slug').notNull().unique(), // e.g., 'payload-cms'
+    name: text('name').notNull(), // e.g., 'Payload CMS Connector'
+    type: text('type').notNull(), // 'feature:cms', 'feature:git', 'feature:analytics'
+    baseUrl: text('base_url').notNull(), // URL of the connector API
+    configUrl: text('config_url'), // URL for UI configuration
+    settingsUrl: text('settings_url'), // URL for UI settings after installation
+    webhookUrl: text('webhook_url'), // Hub URL to receive events
+    description: text('description'),
+    iconUrl: text('icon_url'),
+    clientId: text('client_id').notNull(), // API Client ID for the connector
+    clientSecret: text('client_secret').notNull(), // API Secret for the connector
+    userId: uuid('user_id') // Developer who registered the app
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    isPublished: boolean('is_published').default(false).notNull(), // Public vs Private
+    isInternal: boolean('is_internal').default(false).notNull(), // Built-in apps
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  }
+);
 
 export const installations = pgTable(
   'installations',
@@ -28,40 +35,40 @@ export const installations = pgTable(
     appId: uuid('app_id')
       .notNull()
       .references(() => apps.id, { onDelete: 'cascade' }),
-    userId: uuid('user_id')
+    userId: uuid('user_id') // The Deseo user who installed it
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    clientId: uuid('client_id')
+    clientId: uuid('client_id') // Optional: scope installation to a specific client/workspace
       .references(() => clients.id, { onDelete: 'cascade' }),
-    status: text('status').notNull().default('active'),
-    config: jsonb('config'), // Store non-sensitive installation settings
+    status: text('status').notNull().default('pending'), // 'pending', 'active', 'error'
+    config: jsonb('config'), // Store user-specific app config locally if needed
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
-  (_table) => [
+  (table) => [
+    uniqueIndex('installation_user_app_client_idx').on(table.userId, table.appId, table.clientId),
     pgPolicy('installation_client_isolation', {
       for: 'all',
       to: 'public',
       using: sql`
-        (client_id IS NULL AND user_id = current_setting('app.current_user_id', true)::uuid)
+        (${table.clientId} IS NULL AND user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid)
         OR
-        (current_setting('app.active_client_id', true) = '' AND 
-         exists (select 1 from clients where id = client_id and user_id = current_setting('app.current_user_id', true)::uuid))
+        (NULLIF(current_setting('app.active_client_id', true), '') IS NULL AND 
+         exists (select 1 from clients where id = ${table.clientId} and user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid))
         OR 
-        (client_id = current_setting('app.active_client_id', true)::uuid)
+        (${table.clientId} = NULLIF(current_setting('app.active_client_id', true), '')::uuid)
       `,
       withCheck: sql`
-        (client_id IS NULL AND user_id = current_setting('app.current_user_id', true)::uuid)
+        (${table.clientId} IS NULL AND user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid)
         OR
-        client_id = current_setting('app.active_client_id', true)::uuid
+        (${table.clientId} = NULLIF(current_setting('app.active_client_id', true), '')::uuid)
         OR
-        exists (select 1 from clients where id = client_id and user_id = current_setting('app.current_user_id', true)::uuid)
+        exists (select 1 from clients where id = ${table.clientId} and user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid)
       `,
     }),
   ]
 );
 
-// For secure state exchange during handshakes
 export const authGrants = pgTable(
   'auth_grants',
   {
@@ -77,26 +84,5 @@ export const authGrants = pgTable(
       .references(() => clients.id, { onDelete: 'cascade' }),
     expiresAt: timestamp('expires_at').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
-  },
-  (_table) => [
-    pgPolicy('grant_client_isolation', {
-      for: 'all',
-      to: 'public',
-      using: sql`
-        (client_id IS NULL AND user_id = current_setting('app.current_user_id', true)::uuid)
-        OR
-        (current_setting('app.active_client_id', true) = '' AND 
-         exists (select 1 from clients where id = client_id and user_id = current_setting('app.current_user_id', true)::uuid))
-        OR 
-        (client_id = current_setting('app.active_client_id', true)::uuid)
-      `,
-      withCheck: sql`
-        (client_id IS NULL AND user_id = current_setting('app.current_user_id', true)::uuid)
-        OR
-        client_id = current_setting('app.active_client_id', true)::uuid
-        OR
-        exists (select 1 from clients where id = client_id and user_id = current_setting('app.current_user_id', true)::uuid)
-      `,
-    }),
-  ]
+  }
 );

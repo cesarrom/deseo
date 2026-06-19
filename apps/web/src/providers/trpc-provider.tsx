@@ -14,6 +14,17 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
         httpBatchLink({
           url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/trpc`,
           transformer: superjson,
+          headers() {
+            // Read active client ID from cookies
+            const cookieValue = document.cookie
+              .split('; ')
+              .find((row) => row.startsWith('deseo_active_client_id='))
+              ?.split('=')[1];
+              
+            return {
+              'x-active-client-id': cookieValue,
+            };
+          },
           fetch: (url, options) => {
             return fetch(url, {
               ...options,

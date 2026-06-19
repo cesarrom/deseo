@@ -1,6 +1,7 @@
-import { pgTable, text, timestamp, uuid, jsonb, pgPolicy } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, jsonb, pgPolicy, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { clients } from './clients';
+import { products } from './products';
 
 export const articleStatus = ['draft', 'pending_review', 'approved', 'published', 'archived'] as const;
 
@@ -11,6 +12,8 @@ export const articles = pgTable(
     clientId: uuid('client_id')
       .notNull()
       .references(() => clients.id, { onDelete: 'cascade' }),
+    productId: uuid('product_id')
+      .references(() => products.id, { onDelete: 'set null' }),
     title: text('title').notNull(),
     slug: text('slug').notNull(),
     status: text('status', { enum: articleStatus }).notNull().default('draft'),
@@ -23,20 +26,22 @@ export const articles = pgTable(
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     publishedAt: timestamp('published_at'),
   },
-  (_table) => [
+  (table) => [
+    uniqueIndex('articles_client_slug_idx').on(table.clientId, table.slug),
     pgPolicy('article_client_isolation', {
       for: 'all',
       to: 'public',
       using: sql`
-        (current_setting('app.active_client_id', true) = '' AND 
-         exists (select 1 from clients where id = articles.client_id and user_id = current_setting('app.current_user_id', true)::uuid))
+        (NULLIF(current_setting('app.active_client_id', true), '') IS NULL AND 
+         exists (select 1 from clients where id = ${table.clientId} and user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid))
         OR 
-        (client_id = current_setting('app.active_client_id', true)::uuid)
+        (${table.clientId} = NULLIF(current_setting('app.active_client_id', true), '')::uuid)
       `,
       withCheck: sql`
-        client_id = current_setting('app.active_client_id', true)::uuid
-        OR
-        exists (select 1 from clients where id = articles.client_id and user_id = current_setting('app.current_user_id', true)::uuid)
+        (NULLIF(current_setting('app.active_client_id', true), '') IS NULL AND 
+         exists (select 1 from clients where id = ${table.clientId} and user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid))
+        OR 
+        (${table.clientId} = NULLIF(current_setting('app.active_client_id', true), '')::uuid)
       `,
     }),
   ]

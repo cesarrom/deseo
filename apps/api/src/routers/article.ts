@@ -9,11 +9,20 @@ export const articleRouter = router({
     .input(
       z.object({
         clientId: z.string().optional(),
+        productId: z.string().uuid().optional(),
         limit: z.number().min(1).max(100).default(20),
       })
     )
     .query(async ({ ctx, input }) => {
       return await ctx.withDB(async (tx) => {
+        if (input.productId) {
+          return await tx
+            .select()
+            .from(articles)
+            .where(eq(articles.productId, input.productId))
+            .limit(input.limit);
+        }
+
         if (input.clientId) {
           return await tx
             .select()

@@ -1,71 +1,56 @@
-import type { ArticleAST, ContentNode } from '@deseo/types';
+import type { ArticleAST } from '@deseo/types';
 
-interface PayloadBlock {
-  blockType: string;
-  [key: string]: unknown;
-}
+/**
+ * Payload CMS Native Converter
+ * Since Deseo uses Lexical-compatible AST internally, and Payload CMS
+ * uses Lexical as its default rich text format, this is a pass-through.
+ */
 
-export function astToPayloadBlocks(ast: ArticleAST): PayloadBlock[] {
-  return ast.content.map(nodeToPayloadBlock);
-}
-
-function nodeToPayloadBlock(node: ContentNode): PayloadBlock {
-  switch (node.type) {
-    case 'heading':
-      return {
-        blockType: 'heading',
-        level: node.level,
-        text: node.text,
-      };
-    
-    case 'paragraph':
-      return {
-        blockType: 'richText',
-        content: [{ type: 'text', text: node.text }],
-      };
-    
-    case 'list':
-      return {
-        blockType: 'list',
-        ordered: node.ordered,
-        items: node.items.map(text => ({ text })),
-      };
-    
-    case 'image':
-      return {
-        blockType: 'image',
-        url: node.url,
-        alt: node.alt,
-        caption: node.caption,
-      };
-    
-    case 'code':
-      return {
-        blockType: 'code',
-        language: node.language,
-        code: node.code,
-      };
-    
-    case 'callout':
-      return {
-        blockType: 'callout',
-        variant: node.variant,
-        content: [{ type: 'text', text: node.text }],
-      };
-    
-    case 'blockquote':
-      return {
-        blockType: 'quote',
-        quote: node.text,
-        author: node.author,
-      };
-    
-    case 'divider':
-      return {
-        blockType: 'divider',
-      };
-    
-    default:
-      return { blockType: 'unknown' };
+export function astToPayloadBlocks(ast: any): any {
+  // If it is already a full Lexical state object (has root wrapper)
+  if (ast && ast.root) {
+    return ast;
   }
+
+  // If it is the workflow output shape { metadata, content }
+  if (ast && Array.isArray(ast.content)) {
+    return {
+      root: {
+        type: 'root',
+        version: 1,
+        direction: 'ltr',
+        format: '',
+        indent: 0,
+        children: ast.content,
+      },
+    };
+  }
+
+  // If it is already a flat array of children nodes
+  if (Array.isArray(ast)) {
+    return {
+      root: {
+        type: 'root',
+        version: 1,
+        direction: 'ltr',
+        format: '',
+        indent: 0,
+        children: ast,
+      },
+    };
+  }
+
+  return ast;
+}
+
+export function payloadToAst(payloadData: any): ArticleAST {
+  // If we receive the full root object
+  if (payloadData && payloadData.root) {
+    return payloadData as ArticleAST;
+  }
+
+  // If we receive just the root node
+  return {
+    root: payloadData,
+  };
 }

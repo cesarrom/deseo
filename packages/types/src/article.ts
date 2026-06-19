@@ -1,94 +1,37 @@
-export type ArticleStatus = 'draft' | 'pending_review' | 'approved' | 'published' | 'archived';
+/**
+ * Lexical-compatible Content AST
+ * Based on the open-source Lexical framework (Meta)
+ * Used as the universal content format for Deseo Hub.
+ */
 
-export interface ArticleMetadata {
-  title: string;
-  slug: string;
-  description: string;
-  keywords: string[];
-  author?: string;
-  publishDate?: string;
+export type LexicalDirection = 'ltr' | 'rtl' | null;
+
+export interface LexicalNode {
+  type: string;
+  version: number;
 }
 
-export interface ArticleSEO {
-  metaTitle: string;
-  metaDescription: string;
-  ogImage?: string;
-  schema?: Record<string, unknown>;
-}
-
-export type ContentNodeType =
-  | 'heading'
-  | 'paragraph'
-  | 'list'
-  | 'image'
-  | 'code'
-  | 'callout'
-  | 'blockquote'
-  | 'divider';
-
-export interface BaseContentNode {
-  type: ContentNodeType;
-  id: string;
-}
-
-export interface HeadingNode extends BaseContentNode {
-  type: 'heading';
-  level: 1 | 2 | 3 | 4 | 5 | 6;
+export interface LexicalTextNode extends LexicalNode {
+  type: 'text';
   text: string;
+  format: number; // bitwise format: 1=bold, 2=italic, 4=strikethrough, etc.
+  style: string;
+  detail: number;
+  mode: 'normal' | 'token' | 'segmented';
 }
 
-export interface ParagraphNode extends BaseContentNode {
-  type: 'paragraph';
-  text: string;
+export interface LexicalElementNode extends LexicalNode {
+  children: (LexicalNode | LexicalTextNode | LexicalElementNode)[];
+  direction: LexicalDirection;
+  format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+  indent: number;
 }
 
-export interface ListNode extends BaseContentNode {
-  type: 'list';
-  ordered: boolean;
-  items: string[];
-}
-
-export interface ImageNode extends BaseContentNode {
-  type: 'image';
-  url: string;
-  alt: string;
-  caption?: string;
-}
-
-export interface CodeNode extends BaseContentNode {
-  type: 'code';
-  language: string;
-  code: string;
-}
-
-export interface CalloutNode extends BaseContentNode {
-  type: 'callout';
-  variant: 'info' | 'warning' | 'success' | 'error';
-  text: string;
-}
-
-export interface BlockquoteNode extends BaseContentNode {
-  type: 'blockquote';
-  text: string;
-  author?: string;
-}
-
-export interface DividerNode extends BaseContentNode {
-  type: 'divider';
-}
-
-export type ContentNode =
-  | HeadingNode
-  | ParagraphNode
-  | ListNode
-  | ImageNode
-  | CodeNode
-  | CalloutNode
-  | BlockquoteNode
-  | DividerNode;
-
+/**
+ * The Root of a Lexical Content Tree
+ */
 export interface ArticleAST {
-  metadata: ArticleMetadata;
-  content: ContentNode[];
-  seo: ArticleSEO;
+  root: LexicalElementNode;
 }
+
+export type ArticleStatus = 'draft' | 'pending_review' | 'approved' | 'published' | 'archived';

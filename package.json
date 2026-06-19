@@ -4,7 +4,7 @@
   "description": "SEO automation platform with AI-powered content generation",
   "private": true,
   "scripts": {
-    "dev": "dotenv -- turbo dev",
+    "dev": "turbo dev",
     "build": "dotenv -- turbo build",
     "test": "dotenv -- turbo test",
     "db:generate": "dotenv -- pnpm run --filter @deseo/db db:generate",

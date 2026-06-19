@@ -24,12 +24,13 @@ Requirements:
 5. Include suggestions for images, code examples, or callouts where appropriate
 6. Suggest schema.org structured data type
 
-Return your response as a structured JSON object with this format:
+Return your response as a structured JSON object with this exact format:
 {
   "title": "Main H1 title",
   "metaDescription": "SEO meta description",
   "slug": "url-friendly-slug",
   "keywords": ["primary", "secondary", "long-tail"],
+  "imagePrompt": "A highly detailed, DALL-E 3 optimized prompt to generate a stunning hero image for this article. Describe the visual style, subject, and mood.",
   "sections": [
     {
       "heading": "H2 section title",
@@ -81,4 +82,42 @@ Tasks:
 6. Add meta tags (title, description, Open Graph)
 
 Return structured recommendations with specific suggestions.`;
+}
+
+export function analyzeProductPrompt(domain: string, pages: { url: string; content: string }[]): string {
+  return `Analyze the following website data for the domain: "${domain}"
+
+Page data:
+${pages.map(p => `URL: ${p.url}\nContent Snippet: ${p.content.substring(0, 2000)}`).join('\n---\n')}
+
+Requirements:
+1. Summarize the product/service offering.
+2. Identify the target audience.
+3. Extract 5-10 core value propositions.
+4. Assess the current SEO health based on page titles and content structure.
+5. Identify "Content Gaps" (topics they should be writing about but aren't).
+6. Suggest 3-5 high-impact blog post ideas.
+7. CRITICAL: Identify any subdomains found in the content or links that appear to be independent products or platforms (e.g., app.domain.com, store.domain.com, product.domain.com).
+
+Return your response as a structured JSON object:
+{
+  "summary": "Product summary",
+  "targetAudience": ["audience 1", "audience 2"],
+  "valueProps": ["prop 1", "prop 2"],
+  "seoAssessment": {
+    "score": 0,
+    "strengths": ["strength 1"],
+    "weaknesses": ["weakness 1"],
+    "advice": ["advice 1"]
+  },
+  "contentGaps": ["gap 1"],
+  "suggestedArticles": [
+    {
+      "title": "Proposed Title",
+      "topic": "Keyword/Topic",
+      "reasoning": "Why this is a good idea"
+    }
+  ],
+  "discoveredSubdomains": ["sub1.domain.com", "sub2.domain.com"]
+}`;
 }

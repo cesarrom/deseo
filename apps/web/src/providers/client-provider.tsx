@@ -39,7 +39,15 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
     }
   }, [clients, activeClientId]);
 
-  if (isLoading) {
+  useEffect(() => {
+    if (activeClientId) {
+      document.cookie = `deseo_active_client_id=${activeClientId}; path=/; max-age=31536000; SameSite=Lax`;
+    }
+  }, [activeClientId]);
+
+  // Only block the UI if we are loading AND we expect to have clients
+  // (Or if the user is authenticated and we haven't checked for clients yet)
+  if (isLoading && !clients) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-slate-50">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />

@@ -1,11 +1,24 @@
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '../.env'), override: true });
+
+console.log(`🔌 [GitHub] Initializing with DATABASE_URL: ${process.env.DATABASE_URL?.split('@').pop()}`);
+
 import express from 'express';
 import cors from 'cors';
-
+import fs from 'fs';
 import axios from 'axios';
 import cookieParser from 'cookie-parser';
+import { db } from '../db';
+import { githubTokens } from '../db/schema';
+import { eq } from 'drizzle-orm';
+import { ConnectorSDK } from '@deseo/connector-sdk';
 
-
-
+const sdk = new ConnectorSDK(process.env.DESEO_CLIENT_SECRET!);
 const app = express();
 const PORT = process.env.PORT || 3002;
 const HUB_URL = process.env.HUB_URL || 'http://localhost:3001/trpc';
@@ -14,16 +27,29 @@ app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
 
-// Simple In-Memory Token Store (In production, use a Database)
-const tokenStore = new Map<string, { accessToken: string }>();
+// Load GitHub App Private Key for Server-to-Server authentication
+let githubPrivateKey = '';
+try {
+  const pkPath = path.join(__dirname, '../github_pk.pem');
+  if (fs.existsSync(pkPath)) {
+    githubPrivateKey = fs.readFileSync(pkPath, 'utf8');
+    console.log('🔑 [GitHub] Successfully loaded GitHub App Private Key');
+  } else {
+    console.warn('⚠️ [GitHub] github_pk.pem not found. Background tasks requiring App authentication may fail.');
+  }
+} catch (error) {
+  console.error('❌ [GitHub] Error reading Private Key:', error);
+}
 
 // 1. The Configuration UI (Handshake Entrypoint from Hub)
 app.get('/ui/configure', async (req, res) => {
   const { code } = req.query;
+  console.log('🏁 [GitHub] Handshake started with code:', code);
 
   if (!code) return res.status(400).send('Missing authorization code');
 
   try {
+    console.log('📡 [GitHub] Exchanging code for Deseo Identity at:', HUB_URL);
     // Exchange code for Deseo Identity
     const response = await axios.post(`${HUB_URL}/registry.exchangeCode`, {
       json: {
@@ -33,10 +59,12 @@ app.get('/ui/configure', async (req, res) => {
       }
     });
 
-    const { userId } = response.data.result.data.json;
+    const { userId, installationId } = response.data.result.data.json;
+    console.log('✅ [GitHub] Handshake successful. User:', userId, 'Installation:', installationId);
     
-    // Store Deseo User ID in a secure cookie to link with GitHub later
-    res.cookie('deseo_user_id', userId, { httpOnly: true, maxAge: 600000 }); // 10 mins
+    // Store Deseo User ID and Installation ID in secure cookies
+    res.cookie('deseo_user_id', userId, { httpOnly: true, maxAge: 600000 });
+    res.cookie('deseo_installation_id', installationId, { httpOnly: true, maxAge: 600000 });
 
     // Show landing page to start GitHub OAuth
     res.send(`
@@ -52,6 +80,7 @@ app.get('/ui/configure', async (req, res) => {
       </html>
     `);
   } catch (error: any) {
+    console.error('❌ [GitHub] Identity exchange failed:', error.response?.data || error.message);
     res.status(500).send('Deseo Identity exchange failed');
   }
 });
@@ -60,10 +89,17 @@ app.get('/ui/configure', async (req, res) => {
 app.get('/api/auth/github/callback', async (req, res) => {
   const { code } = req.query;
   const deseoUserId = req.cookies['deseo_user_id'];
+  const installationId = req.cookies['deseo_installation_id'];
 
-  if (!code || !deseoUserId) return res.status(400).send('Session expired or missing code');
+  console.log('🔄 [GitHub] OAuth callback received. Code present:', !!code);
+
+  if (!code || !deseoUserId || !installationId) {
+    console.error('❌ [GitHub] Session expired or missing code:', { hasCode: !!code, hasUser: !!deseoUserId, hasInst: !!installationId });
+    return res.status(400).send('Session expired or missing code');
+  }
 
   try {
+    console.log('📡 [GitHub] Exchanging GitHub code for access token...');
     // Exchange GitHub code for Access Token
     const tokenResponse = await axios.post('https://github.com/login/oauth/access_token', {
       client_id: process.env.GITHUB_CLIENT_ID,
@@ -74,29 +110,53 @@ app.get('/api/auth/github/callback', async (req, res) => {
     });
 
     const { access_token } = tokenResponse.data;
+    console.log('✅ [GitHub] Token obtained. Linking to user:', deseoUserId);
 
-    // Link GitHub Token to Deseo User
-    tokenStore.set(deseoUserId, { accessToken: access_token });
-    console.log(`🔗 Linked GitHub token for Deseo User: ${deseoUserId}`);
+    // Link GitHub Token to Deseo User in DB
+    await db.insert(githubTokens).values({
+      deseoUserId,
+      accessToken: access_token,
+    }).onConflictDoUpdate({
+      target: githubTokens.deseoUserId,
+      set: { accessToken: access_token, updatedAt: new Date() }
+    });
 
+    // Push 'active' status back to Deseo Hub
+    console.log('📡 [GitHub] Pushing ACTIVE status to Hub for installation:', installationId);
+    await axios.post(`${HUB_URL}/registry.updateInstallationStatus`, {
+      json: {
+        clientId: process.env.DESEO_CLIENT_ID,
+        clientSecret: process.env.DESEO_CLIENT_SECRET,
+        installationId,
+        status: 'active'
+      }
+    });
+
+    console.log('🎊 [GitHub] Connection complete!');
     res.send(`
       <html>
         <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
           <h1>✅ GitHub Connected!</h1>
           <p>You can now close this window and return to Deseo.</p>
-          <button onclick="window.location.href='http://localhost:3000/dashboard/settings'">Back to Dashboard</button>
+          <script>
+            if (window.opener) {
+              window.opener.postMessage({ type: 'DESEO_INSTALL_COMPLETE', app: 'github' }, '*');
+            }
+          </script>
+          <button onclick="window.close()">Close Window</button>
         </body>
       </html>
     `);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('❌ [GitHub] Authorization failed:', error.response?.data || error.message);
     res.status(500).send('GitHub Authorization failed');
   }
 });
 
 // 3. Git Provider Action: List Repositories
-app.get('/api/feature/git/repositories', async (req, res) => {
-  const deseoUserId = req.headers['x-deseo-user-id'] as string;
-  const session = tokenStore.get(deseoUserId);
+app.get('/api/feature/git/repositories', sdk.authMiddleware(), async (req, res) => {
+  const { userId } = (req as any).deseo;
+  const [session] = await db.select().from(githubTokens).where(eq(githubTokens.deseoUserId, userId)).limit(1);
 
   if (!session) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
@@ -121,10 +181,10 @@ app.get('/api/feature/git/repositories', async (req, res) => {
 });
 
 // 4. Git Provider Action: Create Pull Request
-app.post('/api/feature/git/pr', async (req, res) => {
-  const deseoUserId = req.headers['x-deseo-user-id'] as string;
+app.post('/api/feature/git/pr', sdk.authMiddleware(), async (req, res) => {
+  const { userId } = (req as any).deseo;
   const { repository, title, body, head, base } = req.body;
-  const session = tokenStore.get(deseoUserId);
+  const [session] = await db.select().from(githubTokens).where(eq(githubTokens.deseoUserId, userId)).limit(1);
 
   if (!session) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
@@ -157,10 +217,10 @@ app.post('/api/feature/git/pr', async (req, res) => {
 });
 
 // 5. Git Provider Action: Scan and Fix (Automated SEO Improvement)
-app.post('/api/feature/git/scan-and-fix', async (req, res) => {
-  const deseoUserId = req.headers['x-deseo-user-id'] as string;
+app.post('/api/feature/git/scan-and-fix', sdk.authMiddleware(), async (req, res) => {
+  const { userId } = (req as any).deseo;
   const { repository } = req.body;
-  const session = tokenStore.get(deseoUserId);
+  const [session] = await db.select().from(githubTokens).where(eq(githubTokens.deseoUserId, userId)).limit(1);
 
   if (!session) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
@@ -206,6 +266,92 @@ app.post('/api/feature/git/scan-and-fix', async (req, res) => {
   } catch (error: any) {
     console.error('Scan and Fix failed:', error.response?.data || error.message);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 6. Git Provider Action: Dashboard Data
+app.get('/api/feature/git/dashboard', sdk.authMiddleware(), async (req, res) => {
+  const { userId } = (req as any).deseo;
+  const repository = req.query.repository as string;
+  const [session] = await db.select().from(githubTokens).where(eq(githubTokens.deseoUserId, userId)).limit(1);
+
+  if (!session) return res.status(401).json({ success: false, error: 'Unauthorized' });
+  if (!repository) return res.status(400).json({ success: false, error: 'Repository is required' });
+
+  try {
+    const auth = { Authorization: `Bearer ${session.accessToken}` };
+    
+    // 1. Fetch recent commits
+    const commitsResponse = await axios.get(`https://api.github.com/repos/${repository}/commits?per_page=5`, { headers: auth });
+    const recentCommits = commitsResponse.data.map((c: any) => ({
+      sha: c.sha,
+      message: c.commit.message,
+      author: c.commit.author.name,
+      date: c.commit.author.date
+    }));
+
+    // 2. Fetch open PRs
+    const prsResponse = await axios.get(`https://api.github.com/repos/${repository}/pulls?state=open`, { headers: auth });
+    const openPullRequests = prsResponse.data.map((pr: any) => ({
+      id: pr.id.toString(),
+      number: pr.number,
+      url: pr.html_url,
+      title: pr.title,
+      status: 'open'
+    }));
+
+    // 3. Mock activity data (In a real app, you'd calculate this from commits/events)
+    const activityOverTime = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      return {
+        date: date.toISOString().split('T')[0],
+        count: Math.floor(Math.random() * 10)
+      };
+    }).reverse();
+
+    res.json({
+      success: true,
+      data: {
+        recentCommits,
+        openPullRequests,
+        activityOverTime
+      }
+    });
+  } catch (error: any) {
+    console.error('GitHub Dashboard failed:', error.response?.data || error.message);
+    res.status(500).json({ success: false, error: 'Failed to fetch dashboard data' });
+  }
+});
+
+// 7. GitHub Webhook Handler
+app.post('/api/webhook', async (req, res) => {
+  const event = req.headers['x-github-event'];
+  const payload = req.body;
+
+  console.log(`📥 [GitHub] Webhook received! Event: ${event}`);
+
+  try {
+    if (event === 'pull_request') {
+      const { action, pull_request, repository } = payload;
+      console.log(`🔧 [GitHub] PR ${pull_request.number} ${action} in ${repository.full_name}`);
+
+      if (action === 'closed' && pull_request.merged) {
+        console.log(`🎉 [GitHub] PR ${pull_request.number} was MERGED!`);
+        // TODO: Notify Deseo Hub to mark the associated SEO fix as resolved
+      }
+    }
+
+    if (event === 'push') {
+      console.log(`🚀 [GitHub] Push detected on branch ${payload.ref} in ${payload.repository.full_name}`);
+      // TODO: Trigger a re-audit if this is the default branch
+    }
+
+    // Always respond with 200 to GitHub
+    res.status(200).json({ success: true });
+  } catch (error: any) {
+    console.error('❌ [GitHub] Webhook processing failed:', error.message);
+    res.status(500).json({ success: false, error: 'Internal Server Error' });
   }
 });
 

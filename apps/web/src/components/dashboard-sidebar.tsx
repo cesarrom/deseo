@@ -11,16 +11,20 @@ import {
   Activity, 
   Settings,
   Sparkles,
-  LogOut
+  LogOut,
+  FileCode,
+  Package
 } from 'lucide-react';
 
 const navItems = [
   { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Products', href: '/dashboard/products', icon: Package },
   { name: 'Intelligence', href: '/dashboard/intelligence', icon: Sparkles },
   { name: 'Marketplace', href: '/dashboard/marketplace', icon: Store },
   { name: 'Clients', href: '/dashboard/clients', icon: Users },
   { name: 'Articles', href: '/dashboard/articles', icon: FileText },
   { name: 'Jobs', href: '/dashboard/jobs', icon: Activity },
+  { name: 'Developer', href: '/dashboard/developer', icon: FileCode },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 

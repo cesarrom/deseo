@@ -1,7 +1,9 @@
 import { generateText } from 'ai';
 import type { ArticleAST, ArticleMetadata, ContentNode } from '@deseo/types';
 import { createOpenRouterClient, DEFAULT_MODEL } from './client';
-import { generateOutlinePrompt, generateSectionPrompt, SYSTEM_PROMPT } from './prompts';
+import { generateOutlinePrompt, generateSectionPrompt, SYSTEM_PROMPT, analyzeProductPrompt } from './prompts';
+import { generateImage } from './image-generator';
+import { parseJSON } from './utils';
 
 interface GenerateArticleOptions {
   topic: string;
@@ -9,6 +11,7 @@ interface GenerateArticleOptions {
   context?: string;
   model?: string;
   apiKey?: string;
+  generateHeroImage?: boolean;
 }
 
 interface OutlineResponse {
@@ -22,6 +25,7 @@ interface OutlineResponse {
     contentHints: string[];
   }[];
   schemaType: string;
+  imagePrompt?: string;
 }
 
 export async function generateArticleOutline(
@@ -33,12 +37,12 @@ export async function generateArticleOutline(
   const prompt = generateOutlinePrompt(options.topic, options.keywords, options.context);
 
   const { text } = await generateText({
-    model: model as any,
+    model,
     system: SYSTEM_PROMPT,
     prompt,
   });
 
-  const outline: OutlineResponse = JSON.parse(text);
+  const outline = parseJSON<OutlineResponse>(text);
 
   const metadata: ArticleMetadata = {
     title: outline.title,
@@ -64,7 +68,7 @@ export async function generateArticleSection(
   const prompt = generateSectionPrompt(sectionTitle, subsections, hints, context);
 
   const { text } = await generateText({
-    model: llm as any,
+    model: llm,
     system: SYSTEM_PROMPT,
     prompt,
   });
@@ -90,6 +94,28 @@ export async function generateFullArticle(options: GenerateArticleOptions): Prom
   const { outline, metadata } = await generateArticleOutline(options);
 
   const content: ContentNode[] = [];
+
+  // Generate Hero Image if requested or defaults to true for new articles
+  if (options.generateHeroImage !== false) {
+    try {
+      const imagePrompt = outline.imagePrompt || `A high quality, professional, editorial illustration about ${metadata.title}. Ensure it is relevant to: ${metadata.keywords.join(', ')}.`;
+      const imageUrl = await generateImage({
+        prompt: imagePrompt,
+        apiKey: options.apiKey,
+      });
+
+      content.push({
+        type: 'image',
+        id: 'hero-image',
+        url: imageUrl,
+        alt: metadata.title,
+        caption: `Illustration for ${metadata.title}`,
+      });
+    } catch (error) {
+      console.error('Failed to generate hero image:', error);
+      // Fail gracefully, article text is more important
+    }
+  }
 
   for (const section of outline.sections) {
     content.push({
@@ -126,4 +152,24 @@ export async function generateFullArticle(options: GenerateArticleOptions): Prom
       },
     },
   };
+}
+
+export async function analyzeProduct(options: {
+  domain: string;
+  pages: { url: string; content: string }[];
+  apiKey?: string;
+  model?: string;
+}): Promise<any> {
+  const openrouter = createOpenRouterClient(options.apiKey);
+  const model = openrouter(options.model || DEFAULT_MODEL);
+
+  const prompt = analyzeProductPrompt(options.domain, options.pages);
+
+  const { text } = await generateText({
+    model,
+    system: SYSTEM_PROMPT,
+    prompt,
+  });
+
+  return parseJSON(text);
 }

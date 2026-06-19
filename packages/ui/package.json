@@ -10,6 +10,7 @@
     "./label": "./src/components/label.tsx",
     "./table": "./src/components/table.tsx",
     "./badge": "./src/components/badge.tsx",
+    "./dialog": "./src/components/dialog.tsx",
     "./styles": "./src/styles.css"
   },
   "scripts": {
@@ -17,13 +18,14 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.16",
     "@radix-ui/react-label": "^2.0.2",
     "@radix-ui/react-slot": "^1.0.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
     "tailwind-merge": "^2.6.1"
-    },
+  },
   "devDependencies": {
     "@deseo/config": "workspace:*",
     "@types/react": "^18.2.55",

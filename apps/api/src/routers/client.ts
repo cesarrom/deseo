@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, publicProcedure, protectedProcedure } from '../trpc';
+import { router, protectedProcedure } from '../trpc';
 import { clients } from '@deseo/db';
 import { eq, and } from 'drizzle-orm';
 
@@ -39,26 +39,35 @@ export const clientRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      return await ctx.withDB(async (tx) => {
-        const [client] = await tx
-          .insert(clients)
-          .values({
-            ...input,
-            userId: ctx.user.id,
-          })
-          .returning();
-        return client;
-      });
+      console.log('🚀 MUTATION START: clients.create', { input, userId: ctx.user.id });
+      try {
+        const result = await ctx.withDB(async (tx) => {
+          console.log('👷 INSIDE TRANSACTION: Inserting client...');
+          const [client] = await tx
+            .insert(clients)
+            .values({
+              ...input,
+              userId: ctx.user.id,
+            })
+            .returning();
+          console.log('✅ INSERT SUCCESS:', client?.id);
+          return client;
+        });
+        return result;
+      } catch (error: any) {
+        console.error('❌ MUTATION ERROR:', error.message, error.stack);
+        throw error;
+      }
     }),
 
-  update: publicProcedure
+  update: protectedProcedure
     .input(
       z.object({
         id: z.string(),
         name: z.string().optional(),
-        payloadInstanceUrl: z.string().optional(),
-        payloadApiKey: z.string().optional(),
+        slug: z.string().optional(),
         aiModelPreference: z.string().optional(),
+        customData: z.any().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -66,8 +75,8 @@ export const clientRouter = router({
       return await ctx.withDB(async (tx) => {
         const [client] = await tx
           .update(clients)
-          .set(data)
-          .where(eq(clients.id, id))
+          .set({ ...data, updatedAt: new Date() })
+          .where(and(eq(clients.id, id), eq(clients.userId, ctx.user.id)))
           .returning();
         return client;
       });

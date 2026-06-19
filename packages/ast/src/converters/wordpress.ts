@@ -1,68 +1,92 @@
-import type { ArticleAST, ContentNode } from '@deseo/types';
+import type { ArticleAST, LexicalNode, LexicalElementNode, LexicalTextNode } from '@deseo/types';
 
-interface GutenbergBlock {
-  blockName: string;
-  attrs: Record<string, unknown>;
-  innerBlocks?: GutenbergBlock[];
-  innerHTML?: string;
-}
+/**
+ * WordPress Gutenberg to Lexical Converter
+ */
 
-export function astToWordPressGutenberg(ast: ArticleAST): GutenbergBlock[] {
-  return ast.content.map(nodeToGutenbergBlock);
-}
-
-function nodeToGutenbergBlock(node: ContentNode): GutenbergBlock {
-  switch (node.type) {
-    case 'heading':
-      return {
-        blockName: 'core/heading',
-        attrs: { level: node.level },
-        innerHTML: node.text,
-      };
-    
-    case 'paragraph':
-      return {
-        blockName: 'core/paragraph',
-        attrs: {},
-        innerHTML: node.text,
-      };
-    
-    case 'list':
-      return {
-        blockName: node.ordered ? 'core/list' : 'core/list',
-        attrs: { ordered: node.ordered },
-        innerHTML: node.items.map(item => `<li>${item}</li>`).join(''),
-      };
-    
-    case 'image':
-      return {
-        blockName: 'core/image',
-        attrs: {
-          url: node.url,
-          alt: node.alt,
-          caption: node.caption,
-        },
-      };
-    
-    case 'code':
-      return {
-        blockName: 'core/code',
-        attrs: {},
-        innerHTML: node.code,
-      };
-    
-    case 'blockquote':
-      return {
-        blockName: 'core/quote',
-        attrs: {},
-        innerHTML: `<p>${node.text}</p>${node.author ? `<cite>${node.author}</cite>` : ''}`,
-      };
-    
-    default:
-      return {
-        blockName: 'core/paragraph',
-        attrs: {},
-        innerHTML: '',
-      };
+export function wordPressToLexical(wpPost: any): ArticleAST {
+  // If it's Gutenberg JSON blocks (from wp-json/wp/v2/posts?context=edit)
+  if (Array.isArray(wpPost.blocks)) {
+    return {
+      root: {
+        type: 'root',
+        version: 1,
+        direction: 'ltr',
+        format: '',
+        indent: 0,
+        children: wpPost.blocks.map(wpBlockToLexical).filter(Boolean) as LexicalNode[],
+      }
+    };
   }
+
+  // Fallback: Simplistic HTML to Lexical (for classic editor or raw content)
+  const text = wpPost.content?.rendered?.replace(/<[^>]*>?/gm, '') || '';
+  return createSimpleLexicalRoot(text);
+}
+
+function wpBlockToLexical(block: any): LexicalNode | null {
+  switch (block.blockName) {
+    case 'core/paragraph':
+      return createParagraph(block.innerHTML?.replace(/<[^>]*>?/gm, '') || '');
+    
+    case 'core/heading':
+      return {
+        type: 'heading',
+        tag: `h${block.attrs?.level || 2}`,
+        level: block.attrs?.level || 2,
+        version: 1,
+        children: [createTextNode(block.innerHTML?.replace(/<[^>]*>?/gm, '') || '')],
+        direction: 'ltr',
+        format: '',
+        indent: 0,
+      } as any;
+
+    case 'core/image':
+      return {
+        type: 'image',
+        url: block.attrs?.url || '',
+        altText: block.attrs?.alt || '',
+        version: 1,
+      } as any;
+
+    default:
+      return null;
+  }
+}
+
+// Helpers
+function createTextNode(text: string): LexicalTextNode {
+  return {
+    type: 'text',
+    version: 1,
+    text,
+    format: 0,
+    style: '',
+    detail: 0,
+    mode: 'normal',
+  };
+}
+
+function createParagraph(text: string): LexicalElementNode {
+  return {
+    type: 'paragraph',
+    version: 1,
+    children: [createTextNode(text)],
+    direction: 'ltr',
+    format: '',
+    indent: 0,
+  };
+}
+
+function createSimpleLexicalRoot(text: string): ArticleAST {
+  return {
+    root: {
+      type: 'root',
+      version: 1,
+      children: [createParagraph(text)],
+      direction: 'ltr',
+      format: '',
+      indent: 0,
+    }
+  };
 }

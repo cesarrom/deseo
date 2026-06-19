@@ -5,43 +5,22 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1775929384367,
-      "tag": "0000_brave_microbe",
+      "when": 1781712089451,
+      "tag": "0000_thick_retro_girl",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1780850076861,
-      "tag": "0001_classy_scream",
+      "when": 1781713175689,
+      "tag": "0001_silent_argent",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "7",
-      "when": 1780852008721,
-      "tag": "0002_superb_young_avengers",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1780944980878,
-      "tag": "0003_pretty_ezekiel_stane",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1780945878093,
-      "tag": "0004_little_franklin_storm",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1780948208919,
-      "tag": "0005_demonic_morph",
+      "when": 1781718303109,
+      "tag": "0002_handy_mesmero",
       "breakpoints": true
     }
   ]

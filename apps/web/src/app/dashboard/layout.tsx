@@ -1,14 +1,41 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { DashboardSidebar } from '@/components/dashboard-sidebar';
-import { ClientProvider } from '@/providers/client-provider';
 import { InitialOnboarding } from '@/components/initial-onboarding';
+import { Loader2 } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      console.log('🔄 CLIENT GUARD: No session, redirecting to signin');
+      router.push('/auth/signin');
+    }
+  }, [status, router]);
+
+  if (status === 'loading') {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-50">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null; // Let the useEffect handle the redirect
+  }
+
   return (
-    <ClientProvider>
+    <>
       <InitialOnboarding />
       <div className="min-h-screen bg-slate-50">
         <DashboardSidebar />
@@ -23,6 +50,6 @@ export default function DashboardLayout({
           </main>
         </div>
       </div>
-    </ClientProvider>
+    </>
   );
 }

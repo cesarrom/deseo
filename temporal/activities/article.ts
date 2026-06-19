@@ -10,11 +10,13 @@ export async function generateArticleOutline(input: {
   topic: string;
   keywords: string[];
   context?: string;
+  model?: string;
 }): Promise<{ outline: any; metadata: ArticleMetadata }> {
   return generateOutline({
     topic: input.topic,
     keywords: input.keywords,
     context: input.context,
+    model: input.model,
   });
 }
 
@@ -23,12 +25,14 @@ export async function generateArticleSection(input: {
   subsections: string[];
   hints: string[];
   context?: string;
+  model?: string;
 }): Promise<ContentNode[]> {
   return generateSection(
     input.sectionTitle,
     input.subsections,
     input.hints,
-    input.context
+    input.context,
+    input.model
   );
 }
 

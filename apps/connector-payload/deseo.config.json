@@ -1,0 +1,9 @@
+{
+  "name": "Payload CMS",
+  "slug": "payload",
+  "type": "feature:cms",
+  "baseUrl": "http://localhost:3004",
+  "configUrl": "/ui/configure",
+  "settingsUrl": "/ui/settings",
+  "port": 3004
+}

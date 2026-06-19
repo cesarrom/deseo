@@ -14,21 +14,27 @@ export interface ConnectorActionParams {
  */
 export async function callConnectorAction(params: ConnectorActionParams): Promise<any> {
   const HUB_URL = process.env.HUB_URL || 'http://localhost:3001/trpc';
-  
+  const internalSecret = process.env.AUTH_SECRET || 'development_secret_123_fallback';
+
   try {
     // We call the Hub's executeAction endpoint
-    const response = await axios.post(`${HUB_URL}/registry.executeAction`, {
-      json: {
-        appSlug: params.appSlug,
-        actionPath: params.actionPath,
-        method: params.method,
-        payload: params.payload,
+    const response = await axios.post(
+      `${HUB_URL}/registry.executeAction`,
+      {
+        json: {
+          appSlug: params.appSlug,
+          actionPath: params.actionPath,
+          method: params.method,
+          payload: params.payload,
+        },
+      },
+      {
+        headers: {
+          'x-internal-secret': internalSecret,
+          Authorization: `Bearer ${params.userId}`,
+        },
       }
-    }, {
-      headers: {
-        'x-deseo-user-id': params.userId,
-      }
-    });
+    );
 
     if (response.data.error) {
       throw new Error(`Hub error: ${response.data.error.json.message}`);

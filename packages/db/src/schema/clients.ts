@@ -16,12 +16,12 @@ export const clients = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
-  (_table) => [
+  (table) => [
     pgPolicy('client_owner_isolation', {
       for: 'all',
       to: 'public',
-      using: sql`user_id = current_setting('app.current_user_id', true)::uuid`,
-      withCheck: sql`user_id = current_setting('app.current_user_id', true)::uuid`,
+      using: sql`${table.userId} = NULLIF(current_setting('app.current_user_id', true), '')::uuid`,
+      withCheck: sql`${table.userId} = NULLIF(current_setting('app.current_user_id', true), '')::uuid`,
     }),
   ]
 );

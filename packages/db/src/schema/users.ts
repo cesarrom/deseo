@@ -18,8 +18,8 @@ export const users = pgTable(
     pgPolicy('user_self_access', {
       for: 'all',
       to: 'public',
-      using: sql`id = current_setting('app.current_user_id', true)::uuid OR current_setting('app.is_internal', true) = 'true'`,
-      withCheck: sql`id = current_setting('app.current_user_id', true)::uuid OR current_setting('app.is_internal', true) = 'true'`,
+      using: sql`id = NULLIF(current_setting('app.current_user_id', true), '')::uuid OR current_setting('app.is_internal', true) = 'true'`,
+      withCheck: sql`id = NULLIF(current_setting('app.current_user_id', true), '')::uuid OR current_setting('app.is_internal', true) = 'true'`,
     }),
   ]
 );

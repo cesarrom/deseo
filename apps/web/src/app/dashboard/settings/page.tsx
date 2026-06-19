@@ -1,10 +1,13 @@
 'use client';
 
 import { trpc } from '@/utils/trpc';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@deseo/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@deseo/ui/card';
 import { Badge } from '@deseo/ui/badge';
 import { Button } from '@deseo/ui/button';
-import { Github, FileCode, BarChart3, Loader2, Trash2 } from 'lucide-react';
+import { Github, FileCode, BarChart3, Loader2, Trash2, Sparkles } from 'lucide-react';
+import { useClient } from '@/providers/client-provider';
+import { ModelSelector } from '@/components/model-selector';
+import { useState, useEffect } from 'react';
 
 const iconMap = {
   'feature:git': Github,
@@ -13,7 +16,36 @@ const iconMap = {
 };
 
 export default function SettingsPage() {
+  const { activeClientId, clients } = useClient();
+  const activeClient = clients.find(c => c.id === activeClientId);
+  
   const { data: installations, isLoading } = trpc.registry.listInstallations.useQuery();
+  const utils = trpc.useUtils();
+
+  const [selectedModel, setSelectedModel] = useState(activeClient?.aiModelPreference || 'openai/gpt-4o');
+
+  useEffect(() => {
+    if (activeClient?.aiModelPreference) {
+      setSelectedModel(activeClient.aiModelPreference);
+    }
+  }, [activeClient]);
+
+  const updateClientMutation = trpc.clients.update.useMutation({
+    onSuccess: () => {
+      utils.clients.list.invalidate();
+      alert('Client settings updated successfully!');
+    }
+  });
+
+  const syncMutation = trpc.registry.syncInstallation.useMutation({
+    onSuccess: () => {
+      alert('Sync process started! Check the dashboard in a few minutes.');
+    },
+    onError: (err) => {
+      alert(`Error starting sync: ${err.message}`);
+    }
+  });
+
   const optimizeMutation = trpc.registry.optimizeSite.useMutation({
     onSuccess: (data) => {
       alert(`SEO Workflow started! Workflow ID: ${data.workflowId}`);
@@ -39,6 +71,36 @@ export default function SettingsPage() {
       </div>
 
       <section className="space-y-4">
+        <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-blue-600" /> AI Model Preference
+        </h2>
+        <Card>
+          <CardHeader>
+            <CardTitle>Content & Analysis Model</CardTitle>
+            <CardDescription>
+              Choose which AI model {activeClient?.name} should use for generating articles and analyzing products.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+          </CardContent>
+          <CardFooter className="bg-slate-50 border-t flex justify-between items-center py-3">
+             <p className="text-xs text-slate-500 italic">
+               Current: <span className="font-mono font-bold">{activeClient?.aiModelPreference}</span>
+             </p>
+             <Button 
+               size="sm" 
+               onClick={() => updateClientMutation.mutate({ id: activeClientId!, aiModelPreference: selectedModel })}
+               disabled={updateClientMutation.isPending || selectedModel === activeClient?.aiModelPreference}
+             >
+               {updateClientMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+               Save Preference
+             </Button>
+          </CardFooter>
+        </Card>
+      </section>
+
+      <section className="space-y-4">
         <h2 className="text-xl font-semibold text-slate-900">Active Connections</h2>
         <div className="grid gap-4">
           {installations?.map((inst) => {
@@ -57,17 +119,29 @@ export default function SettingsPage() {
                     {inst.status}
                   </Badge>
 
-                  {inst.app.type === 'feature:git' && (
+                  <div className="flex items-center gap-2 ml-4">
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="ml-2 border-blue-200 text-blue-700 hover:bg-blue-50"
-                      onClick={() => optimizeMutation.mutate({ appSlug: inst.app.slug })}
-                      disabled={optimizeMutation.isPending}
+                      onClick={() => syncMutation.mutate({ installationId: inst.id })}
+                      disabled={syncMutation.isPending}
                     >
-                      {optimizeMutation.isPending ? 'Starting...' : 'Optimize My Site'}
+                      {syncMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : null}
+                      Sync Resources
                     </Button>
-                  )}
+
+                    {inst.app.type === 'feature:git' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                        onClick={() => optimizeMutation.mutate({ appSlug: inst.app.slug })}
+                        disabled={optimizeMutation.isPending}
+                      >
+                        {optimizeMutation.isPending ? 'Starting...' : 'Optimize My Site'}
+                      </Button>
+                    )}
+                  </div>
 
                   <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-600">
                     <Trash2 className="h-4 w-4" />

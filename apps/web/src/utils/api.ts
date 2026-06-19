@@ -41,6 +41,10 @@ export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}) 
   // Inject internal communication secret to prove the request came from our own Next.js server
   const internalSecret = process.env.AUTH_SECRET || 'development_secret_123_fallback';
   finalHeaders.set('x-internal-secret', internalSecret);
+  
+  if (endpoint.includes('syncUser')) {
+     console.log('📡 SYNCING USER WITH SECRET:', internalSecret.substring(0, 4) + '...');
+  }
 
   if (authToken) {
     finalHeaders.set('Authorization', `Bearer ${authToken}`);

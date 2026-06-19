@@ -1,18 +1,20 @@
 # Deseo Task Log
 
-## 🛠 Active Task: Autonomous Full-Stack Sprint
-**Goal**: Complete the end-to-end "Discovery -> Creation -> Delivery" loop.
+## 🛠 Active Task: Content ROI & Feedback Loop
+**Goal**: Implement suggestions and performance tracking.
 
-### 📅 Current Focus: [2026-06-07]
-- [x] Build `apps/connector-payload` (CMS Spoke)
-- [x] Implement `contentCreationWorkflow` (AI -> AST)
-- [x] Build Article Management UI (`/dashboard/articles`)
-- [x] Build Job Monitoring UI (`/dashboard/jobs`)
-- [x] Implement Real SEO scanning in `apps/connector-github`
+### 📅 Current Focus: [2026-06-15]
+- [ ] Implement `suggestions` and `performance_metrics` tables
+- [ ] Add Image Generation to `@deseo/ai`
+- [ ] Build "Intelligence" view with actionable AI suggestions
+- [ ] Create `trackPerformanceWorkflow` (Temporal)
 
 ---
 
 ## ✅ Completed Tasks
+- Onboarding Wizard with Popup Handshake
+- Decentralized Connector Registration (Web + CLI)
+- Type-Specific Scaffolding (Git/CMS/Analytics)
 - Platform Core & Registry (Identity & Handshake verified)
 - GitHub Spoke (Functional PR creation & Repo scanning)
 - GSC Spoke (Search Console data extraction)

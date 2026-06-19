@@ -1,0 +1,1 @@
+ALTER TABLE "payload_configs" ADD CONSTRAINT "payload_configs_deseo_user_id_unique" UNIQUE("deseo_user_id");
