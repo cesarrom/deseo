@@ -19,7 +19,6 @@ COPY packages/db/      ./packages/db/
 COPY packages/ui/      ./packages/ui/
 COPY packages/config/  ./packages/config/
 COPY apps/web/         ./apps/web/
-# NEXT_PUBLIC_* vars baked into the bundle at build time
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN mkdir -p ./apps/web/public
@@ -27,14 +26,25 @@ RUN pnpm --filter @deseo/web build
 
 # ── Runtime ───────────────────────────────────────────────────────────────────
 FROM base AS runner
-RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 WORKDIR /app
+# Reinstall prod deps so pnpm workspace symlinks are set up correctly
+COPY .npmrc pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY packages/types/package.json   ./packages/types/
+COPY packages/db/package.json      ./packages/db/
+COPY packages/ui/package.json      ./packages/ui/
+COPY packages/config/package.json  ./packages/config/
+COPY apps/web/package.json         ./apps/web/
+RUN pnpm install --frozen-lockfile --prod
+# Workspace package sources (pnpm symlinks point into these)
+COPY --from=builder /app/packages/types/ ./packages/types/
+COPY --from=builder /app/packages/db/    ./packages/db/
+COPY --from=builder /app/packages/ui/    ./packages/ui/
+# Built Next.js output and config
+COPY --from=builder /app/apps/web/.next        ./apps/web/.next
+COPY --from=builder /app/apps/web/public       ./apps/web/public
+COPY --from=builder /app/apps/web/next.config.ts ./apps/web/next.config.ts
 
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static     ./apps/web/.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public           ./apps/web/public
-
-USER nextjs
+WORKDIR /app/apps/web
 ENV NODE_ENV=production
-ENV HOSTNAME=0.0.0.0
-CMD ["node", "apps/web/server.js"]
+EXPOSE 3000
+CMD ["pnpm", "start"]
