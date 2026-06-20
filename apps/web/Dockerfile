@@ -22,6 +22,7 @@ COPY apps/web/         ./apps/web/
 # NEXT_PUBLIC_* vars baked into the bundle at build time
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+RUN mkdir -p ./apps/web/public
 RUN pnpm --filter @deseo/web build
 
 # ── Runtime ───────────────────────────────────────────────────────────────────
