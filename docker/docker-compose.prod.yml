@@ -1,4 +1,20 @@
 services:
+  # ─── Migrations (one-shot, runs before any app starts) ────────────────────
+
+  deseo-migrator:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.migrator
+    container_name: deseo-migrator
+    restart: "no"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}
+      CONNECTOR_GITHUB_DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/deseo_connector_github
+      CONNECTOR_GSC_DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/deseo_connector_gsc
+      CONNECTOR_PAYLOAD_DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/deseo_connector_payload
+    networks:
+      - shared_db_net
+
   # ─── Infrastructure ────────────────────────────────────────────────────────
 
   redis:
@@ -88,6 +104,8 @@ services:
       CONNECTOR_PAYLOAD_CLIENT_SECRET: ${CONNECTOR_PAYLOAD_CLIENT_SECRET}
       CONNECTOR_PAYLOAD_BASE_URL: ${CONNECTOR_PAYLOAD_PUBLIC_URL}
     depends_on:
+      deseo-migrator:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       temporal:
@@ -135,6 +153,8 @@ services:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       API_PORT: 3001
     depends_on:
+      deseo-migrator:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       temporal:
@@ -161,6 +181,8 @@ services:
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
     depends_on:
+      deseo-migrator:
+        condition: service_completed_successfully
       api:
         condition: service_healthy
     networks:
@@ -184,6 +206,8 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URL: ${CONNECTOR_GSC_PUBLIC_URL}/callback
     depends_on:
+      deseo-migrator:
+        condition: service_completed_successfully
       api:
         condition: service_healthy
     networks:
@@ -204,6 +228,8 @@ services:
       DESEO_CLIENT_ID: ${CONNECTOR_PAYLOAD_CLIENT_ID}
       DESEO_CLIENT_SECRET: ${CONNECTOR_PAYLOAD_CLIENT_SECRET}
     depends_on:
+      deseo-migrator:
+        condition: service_completed_successfully
       api:
         condition: service_healthy
     networks:
