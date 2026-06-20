@@ -124,6 +124,8 @@ services:
     build:
       context: ..
       dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${API_PUBLIC_URL}
     container_name: deseo-web
     restart: always
     environment:
@@ -237,9 +239,30 @@ services:
       - deseo-network
       - shared_db_net
 
+  deseo-caddy:
+    image: caddy:2-alpine
+    container_name: deseo-caddy
+    restart: always
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      deseo-web:
+        condition: service_started
+      deseo-api:
+        condition: service_healthy
+    networks:
+      - deseo-network
+
 volumes:
   redis_data:
   temporal_data:
+  caddy_data:
+  caddy_config:
 
 networks:
   deseo-network:

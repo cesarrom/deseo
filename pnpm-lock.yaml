@@ -437,6 +437,9 @@ importers:
       '@deseo/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@deseo/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@lexical/code':
         specifier: ^0.45.0
         version: 0.45.0
