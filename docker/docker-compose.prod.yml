@@ -17,7 +17,7 @@ services:
 
   # ─── Infrastructure ────────────────────────────────────────────────────────
 
-  redis:
+  deseo-redis:
     image: redis:7-alpine
     container_name: deseo-redis
     restart: always
@@ -31,7 +31,7 @@ services:
     networks:
       - deseo-network
 
-  temporal:
+  deseo-temporal:
     image: temporalio/auto-setup:latest
     container_name: deseo-temporal
     restart: always
@@ -47,21 +47,21 @@ services:
       - deseo-network
       - shared_db_net
 
-  temporal-ui:
+  deseo-temporal-ui:
     image: temporalio/ui:latest
     container_name: deseo-temporal-ui
     restart: always
     environment:
-      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_ADDRESS=deseo-temporal:7233
       - TEMPORAL_CORS_ORIGINS=${APP_PUBLIC_URL}
     depends_on:
-      - temporal
+      - deseo-temporal
     networks:
       - deseo-network
 
   # ─── Applications ──────────────────────────────────────────────────────────
 
-  api:
+  deseo-api:
     build:
       context: ..
       dockerfile: apps/api/Dockerfile
@@ -72,9 +72,9 @@ services:
       PORT: 3001
       # Database & cache
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://deseo-redis:6379
       # Temporal
-      TEMPORAL_URL: temporal:7233
+      TEMPORAL_URL: deseo-temporal:7233
       # AI
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       # Auth
@@ -106,9 +106,9 @@ services:
     depends_on:
       deseo-migrator:
         condition: service_completed_successfully
-      redis:
+      deseo-redis:
         condition: service_healthy
-      temporal:
+      deseo-temporal:
         condition: service_started
     healthcheck:
       test: ['CMD-SHELL', 'wget -qO- http://localhost:3001/health || exit 1']
@@ -120,7 +120,7 @@ services:
       - deseo-network
       - shared_db_net
 
-  web:
+  deseo-web:
     build:
       context: ..
       dockerfile: apps/web/Dockerfile
@@ -134,12 +134,12 @@ services:
       # Baked into the client bundle at build time — must be the public API URL
       NEXT_PUBLIC_API_URL: ${API_PUBLIC_URL}
     depends_on:
-      api:
+      deseo-api:
         condition: service_healthy
     networks:
       - deseo-network
 
-  worker:
+  deseo-worker:
     build:
       context: ..
       dockerfile: apps/worker/Dockerfile
@@ -148,24 +148,24 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}
-      REDIS_URL: redis://redis:6379
-      TEMPORAL_URL: temporal:7233
+      REDIS_URL: redis://deseo-redis:6379
+      TEMPORAL_URL: deseo-temporal:7233
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       API_PORT: 3001
     depends_on:
       deseo-migrator:
         condition: service_completed_successfully
-      redis:
+      deseo-redis:
         condition: service_healthy
-      temporal:
+      deseo-temporal:
         condition: service_started
-      api:
+      deseo-api:
         condition: service_healthy
     networks:
       - deseo-network
       - shared_db_net
 
-  connector-github:
+  deseo-connector-github:
     build:
       context: ..
       dockerfile: apps/connector-github/Dockerfile
@@ -175,7 +175,7 @@ services:
       NODE_ENV: production
       PORT: 3002
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/deseo_connector_github
-      HUB_URL: http://api:3001/trpc
+      HUB_URL: http://deseo-api:3001/trpc
       DESEO_CLIENT_ID: ${CONNECTOR_GITHUB_CLIENT_ID}
       DESEO_CLIENT_SECRET: ${CONNECTOR_GITHUB_CLIENT_SECRET}
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
@@ -183,13 +183,13 @@ services:
     depends_on:
       deseo-migrator:
         condition: service_completed_successfully
-      api:
+      deseo-api:
         condition: service_healthy
     networks:
       - deseo-network
       - shared_db_net
 
-  connector-gsc:
+  deseo-connector-gsc:
     build:
       context: ..
       dockerfile: apps/connector-gsc/Dockerfile
@@ -199,22 +199,23 @@ services:
       NODE_ENV: production
       PORT: 3003
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/deseo_connector_gsc
-      HUB_URL: http://api:3001/trpc
+      HUB_URL: http://deseo-api:3001/trpc
       DESEO_CLIENT_ID: ${CONNECTOR_GSC_CLIENT_ID}
       DESEO_CLIENT_SECRET: ${CONNECTOR_GSC_CLIENT_SECRET}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_CLIENT_ID: ${CONNECTOR_GSC_GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${CONNECTOR_GSC_GOOGLE_CLIENT_SECRET}
+      GOOGLE_SCOPES: ${CONNECTOR_GSC_GOOGLE_SCOPES}
       GOOGLE_REDIRECT_URL: ${CONNECTOR_GSC_PUBLIC_URL}/callback
     depends_on:
       deseo-migrator:
         condition: service_completed_successfully
-      api:
+      deseo-api:
         condition: service_healthy
     networks:
       - deseo-network
       - shared_db_net
 
-  connector-payload:
+  deseo-connector-payload:
     build:
       context: ..
       dockerfile: apps/connector-payload/Dockerfile
@@ -224,13 +225,13 @@ services:
       NODE_ENV: production
       PORT: 3004
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/deseo_connector_payload
-      HUB_URL: http://api:3001/trpc
+      HUB_URL: http://deseo-api:3001/trpc
       DESEO_CLIENT_ID: ${CONNECTOR_PAYLOAD_CLIENT_ID}
       DESEO_CLIENT_SECRET: ${CONNECTOR_PAYLOAD_CLIENT_SECRET}
     depends_on:
       deseo-migrator:
         condition: service_completed_successfully
-      api:
+      deseo-api:
         condition: service_healthy
     networks:
       - deseo-network
