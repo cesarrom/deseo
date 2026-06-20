@@ -1,0 +1,9 @@
+{
+  "extends": "@deseo/config/typescript.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "."
+  },
+  "include": ["workflows/**/*", "activities/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

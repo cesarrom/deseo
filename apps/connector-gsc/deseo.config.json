@@ -1,0 +1,8 @@
+{
+  "name": "Google Search Console",
+  "slug": "gsc",
+  "type": "feature:analytics",
+  "baseUrl": "http://localhost:3003",
+  "configUrl": "/ui/configure",
+  "port": 3003
+}

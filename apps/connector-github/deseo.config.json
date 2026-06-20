@@ -1,0 +1,9 @@
+{
+  "name": "GitHub Connector",
+  "slug": "github",
+  "type": "feature:git",
+  "baseUrl": "http://localhost:3002",
+  "configUrl": "/ui/configure",
+  "webhookUrl": "/api/webhook",
+  "port": 3002
+}

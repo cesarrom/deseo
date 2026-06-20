@@ -1,0 +1,42 @@
+{
+  "name": "@deseo/api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "dotenv -- tsx watch src/index.ts",
+    "build": "tsup src/index.ts --format esm --clean",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@deseo/ai": "workspace:*",
+    "@deseo/ast": "workspace:*",
+    "@deseo/db": "workspace:*",
+    "@deseo/types": "workspace:*",
+    "@openrouter/ai-sdk-provider": "^2.9.0",
+    "ai": "^6.0.191",
+    "@t3-oss/env-core": "^0.11.1",
+    "@temporalio/client": "^1.12.0",
+    "@trpc/server": "^11.0.0",
+    "axios": "^1.17.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "drizzle-orm": "^0.38.3",
+    "jsonwebtoken": "^9.0.3",
+    "next-auth": "^5.0.0-beta.31",
+    "superjson": "^2.2.6",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^11.0.0",
+    "@deseo/config": "workspace:*",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

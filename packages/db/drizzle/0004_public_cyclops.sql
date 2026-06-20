@@ -1,0 +1,1 @@
+ALTER TABLE "clients" ADD COLUMN "ai_image_model" text DEFAULT 'openai/dall-e-3';

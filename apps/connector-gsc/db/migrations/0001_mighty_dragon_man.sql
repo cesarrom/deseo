@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "gsc_user_id_idx" ON "gsc_tokens" USING btree ("deseo_user_id");

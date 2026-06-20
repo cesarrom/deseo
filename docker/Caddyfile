@@ -1,0 +1,26 @@
+http://deseo.askn.us {
+	# API — strip /api prefix before proxying
+	handle_path /server/* {
+		reverse_proxy deseo-api:3001
+	}
+
+	# GitHub connector
+	handle_path /connectors/github/* {
+		reverse_proxy deseo-connector-github:3002
+	}
+
+	# GSC connector
+	handle_path /connectors/gsc/* {
+		reverse_proxy deseo-connector-gsc:3003
+	}
+
+	# Payload connector
+	handle_path /connectors/payload/* {
+		reverse_proxy deseo-connector-payload:3004
+	}
+
+	# Web — catch-all
+	handle {
+		reverse_proxy deseo-web:3000
+	}
+}

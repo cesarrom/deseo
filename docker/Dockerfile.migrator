@@ -1,0 +1,32 @@
+FROM node:24-alpine
+
+RUN corepack enable pnpm
+
+WORKDIR /app
+
+# Copy workspace manifests first for layer caching
+COPY .npmrc pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY packages/db/package.json                   ./packages/db/
+COPY packages/types/package.json                ./packages/types/
+COPY packages/config/package.json               ./packages/config/
+COPY apps/connector-github/package.json         ./apps/connector-github/
+COPY apps/connector-gsc/package.json            ./apps/connector-gsc/
+COPY apps/connector-payload/package.json        ./apps/connector-payload/
+
+RUN pnpm install --frozen-lockfile --ignore-scripts
+
+# Copy only the source needed for drizzle-kit to resolve schemas + migrations
+COPY packages/db/                   ./packages/db/
+COPY packages/types/                ./packages/types/
+COPY packages/config/               ./packages/config/
+COPY apps/connector-github/db/      ./apps/connector-github/db/
+COPY apps/connector-github/drizzle.config.ts ./apps/connector-github/
+COPY apps/connector-gsc/db/         ./apps/connector-gsc/db/
+COPY apps/connector-gsc/drizzle.config.ts    ./apps/connector-gsc/
+COPY apps/connector-payload/db/     ./apps/connector-payload/db/
+COPY apps/connector-payload/drizzle.config.ts ./apps/connector-payload/
+
+COPY docker/migrate.sh /migrate.sh
+RUN chmod +x /migrate.sh
+
+CMD ["/migrate.sh"]

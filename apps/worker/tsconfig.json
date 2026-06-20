@@ -1,0 +1,8 @@
+{
+  "extends": "@deseo/config/typescript.json",
+  "compilerOptions": {
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*", "../../temporal/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

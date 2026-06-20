@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "github_user_id_idx" ON "github_tokens" USING btree ("deseo_user_id");
