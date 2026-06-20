@@ -8,6 +8,7 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/connector-sdk/package.json   ./packages/connector-sdk/
 COPY packages/ast/package.json             ./packages/ast/
 COPY packages/types/package.json           ./packages/types/
+COPY packages/config/package.json          ./packages/config/
 COPY apps/connector-payload/package.json   ./apps/connector-payload/
 RUN pnpm install --frozen-lockfile
 
@@ -16,6 +17,7 @@ FROM deps AS builder
 COPY packages/connector-sdk/   ./packages/connector-sdk/
 COPY packages/ast/             ./packages/ast/
 COPY packages/types/           ./packages/types/
+COPY packages/config/          ./packages/config/
 COPY apps/connector-payload/   ./apps/connector-payload/
 RUN pnpm --filter @deseo/connector-payload build
 

@@ -7,6 +7,7 @@ WORKDIR /app
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/types/package.json   ./packages/types/
 COPY packages/db/package.json      ./packages/db/
+COPY packages/config/package.json  ./packages/config/
 COPY apps/web/package.json         ./apps/web/
 RUN pnpm install --frozen-lockfile
 
@@ -14,6 +15,7 @@ RUN pnpm install --frozen-lockfile
 FROM deps AS builder
 COPY packages/types/   ./packages/types/
 COPY packages/db/      ./packages/db/
+COPY packages/config/  ./packages/config/
 COPY apps/web/         ./apps/web/
 # NEXT_PUBLIC_* vars baked into the bundle at build time
 ARG NEXT_PUBLIC_API_URL

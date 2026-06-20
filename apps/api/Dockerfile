@@ -9,6 +9,7 @@ COPY packages/ai/package.json      ./packages/ai/
 COPY packages/ast/package.json     ./packages/ast/
 COPY packages/db/package.json      ./packages/db/
 COPY packages/types/package.json   ./packages/types/
+COPY packages/config/package.json  ./packages/config/
 COPY apps/api/package.json         ./apps/api/
 RUN pnpm install --frozen-lockfile
 
@@ -18,6 +19,7 @@ COPY packages/ai/      ./packages/ai/
 COPY packages/ast/     ./packages/ast/
 COPY packages/db/      ./packages/db/
 COPY packages/types/   ./packages/types/
+COPY packages/config/  ./packages/config/
 COPY apps/api/         ./apps/api/
 RUN pnpm --filter @deseo/api build
 

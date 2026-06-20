@@ -6,12 +6,14 @@ FROM base AS deps
 WORKDIR /app
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/connector-sdk/package.json   ./packages/connector-sdk/
+COPY packages/config/package.json          ./packages/config/
 COPY apps/connector-github/package.json    ./apps/connector-github/
 RUN pnpm install --frozen-lockfile
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 FROM deps AS builder
 COPY packages/connector-sdk/   ./packages/connector-sdk/
+COPY packages/config/          ./packages/config/
 COPY apps/connector-github/    ./apps/connector-github/
 RUN pnpm --filter @deseo/connector-github build
 

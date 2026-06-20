@@ -9,6 +9,7 @@ COPY packages/ai/package.json      ./packages/ai/
 COPY packages/ast/package.json     ./packages/ast/
 COPY packages/db/package.json      ./packages/db/
 COPY packages/types/package.json   ./packages/types/
+COPY packages/config/package.json  ./packages/config/
 COPY apps/worker/package.json      ./apps/worker/
 COPY temporal/package.json         ./temporal/
 # All deps needed — typescript is required by Temporal's workflow webpack bundler at startup
@@ -20,6 +21,7 @@ COPY packages/ai/      ./packages/ai/
 COPY packages/ast/     ./packages/ast/
 COPY packages/db/      ./packages/db/
 COPY packages/types/   ./packages/types/
+COPY packages/config/  ./packages/config/
 COPY apps/worker/      ./apps/worker/
 COPY temporal/         ./temporal/
 RUN pnpm --filter @deseo/worker build
@@ -31,6 +33,7 @@ COPY packages/ai/      ./packages/ai/
 COPY packages/ast/     ./packages/ast/
 COPY packages/db/      ./packages/db/
 COPY packages/types/   ./packages/types/
+COPY packages/config/  ./packages/config/
 COPY apps/worker/      ./apps/worker/
 COPY temporal/         ./temporal/
 COPY --from=builder /app/apps/worker/dist ./apps/worker/dist
