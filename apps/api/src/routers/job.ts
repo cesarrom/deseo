@@ -83,17 +83,33 @@ export const jobRouter = router({
       }
 
       // Trigger Temporal Workflow
+      // article_generation now uses the V2 multi-agent pipeline
       const workflowName = {
-        article_generation: 'generateArticleWorkflow',
+        article_generation: 'generateArticleWorkflowV2',
         seo_optimization: 'optimizeSEOWorkflow',
         keyword_research: 'keywordResearchWorkflow',
       }[input.type];
+
+      // Build V2 input shape for article generation
+      const workflowArgs = input.type === 'article_generation'
+        ? [{
+            topic: typeof input.input?.payload === 'string' ? input.input.payload : JSON.stringify(input.input?.payload),
+            keywords: input.input?.keywords || [],
+            clientId: input.clientId,
+            productId: input.input?.productId,
+            targetCMS: input.input?.targetCMS || input.input?.targetCms,
+            generateImages: input.input?.generateImages ?? true,
+            suggestionId: input.input?.suggestionId,
+            verticalUrl: input.input?.verticalUrl,
+            suggestionContext: input.input?.suggestionContext,
+          }]
+        : [input.input];
 
       try {
         await ctx.temporal.workflow.start(workflowName, {
           taskQueue: 'deseo-main-queue',
           workflowId: `job-${job.id}`,
-          args: [input.input],
+          args: workflowArgs,
         });
 
         // Update status to running

@@ -3,7 +3,7 @@
 import { trpc } from '@/utils/trpc';
 import { Card, CardContent } from '@deseo/ui/card';
 import { Badge } from '@deseo/ui/badge';
-import { Loader2, Search, Cpu, Info } from 'lucide-react';
+import { Loader2, Search, Cpu } from 'lucide-react';
 import { useState } from 'react';
 import { Input } from '@deseo/ui/input';
 import { cn } from '@/lib/utils';
@@ -11,9 +11,10 @@ import { cn } from '@/lib/utils';
 interface ModelSelectorProps {
   value: string;
   onChange: (value: string) => void;
+  imageOnly?: boolean;
 }
 
-export function ModelSelector({ value, onChange }: ModelSelectorProps) {
+export function ModelSelector({ value, onChange, imageOnly = false }: ModelSelectorProps) {
   const { data: models, isLoading } = trpc.intelligence.listModels.useQuery();
   const [search, setSearch] = useState('');
 
@@ -25,10 +26,17 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
     );
   }
 
-  const filteredModels = models?.filter((m: any) => 
-    m.name.toLowerCase().includes(search.toLowerCase()) || 
-    m.id.toLowerCase().includes(search.toLowerCase())
-  ).slice(0, 100);
+  const filteredModels = models?.filter((m: any) => {
+    const matchesSearch =
+      m.name.toLowerCase().includes(search.toLowerCase()) ||
+      m.id.toLowerCase().includes(search.toLowerCase());
+    if (!matchesSearch) return false;
+    if (imageOnly) {
+      const modality: string = m.architecture?.modality ?? m.architecture?.output_modalities?.join(',') ?? '';
+      return modality.includes('image') || m.id.includes('dall-e') || m.id.includes('flux') || m.id.includes('recraft') || m.id.includes('stable-diffusion') || m.id.includes('imagen');
+    }
+    return true;
+  }).slice(0, 100);
 
   return (
     <div className="space-y-4">

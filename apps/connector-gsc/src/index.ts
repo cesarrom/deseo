@@ -19,6 +19,25 @@ import { gscTokens } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { ConnectorSDK } from '@deseo/connector-sdk';
 
+/** Strip GSC-specific prefixes so the core always sees a clean hostname. */
+function normalizeGscDomain(siteUrl: string): string {
+  return siteUrl
+    .replace(/^sc-domain:/, '')
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '');
+}
+
+/**
+ * Reconstruct the GSC-native site URL from a clean domain.
+ * Domain properties use sc-domain:, URL-prefix properties use https://.
+ * We try sc-domain: first (most common modern registration). If GSC rejects
+ * it, the caller falls back to the https:// variant automatically.
+ */
+function toGscSiteUrl(domain: string): string {
+  if (domain.startsWith('sc-domain:') || domain.startsWith('http')) return domain;
+  return `sc-domain:${domain}`;
+}
+
 const sdk = new ConnectorSDK(process.env.DESEO_CLIENT_SECRET!);
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -157,8 +176,12 @@ app.get('/api/feature/analytics/sites', sdk.authMiddleware(), async (req, res) =
     const searchconsole = google.searchconsole({ version: 'v1', auth: oauth2Client });
 
     const response = await searchconsole.sites.list({});
+    const sites = (response.data.siteEntry ?? []).map((s: any) => ({
+      ...s,
+      siteUrl: normalizeGscDomain(s.siteUrl ?? ''),
+    }));
 
-    res.json({ success: true, data: response.data.siteEntry });
+    res.json({ success: true, data: sites });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -167,7 +190,8 @@ app.get('/api/feature/analytics/sites', sdk.authMiddleware(), async (req, res) =
 // 4. GSC Provider Action: Fetch Performance
 app.post('/api/feature/analytics/performance', sdk.authMiddleware(), async (req, res) => {
   const { userId } = (req as any).deseo;
-  const { siteUrl, startDate, endDate } = req.body;
+  const { siteUrl: rawSiteUrl, startDate, endDate } = req.body;
+  const siteUrl = toGscSiteUrl(rawSiteUrl);
   const [tokenRecord] = await db.select().from(gscTokens).where(eq(gscTokens.deseoUserId, userId)).limit(1);
 
   if (!tokenRecord) return res.status(401).json({ success: false, error: 'Unauthorized' });
@@ -195,7 +219,8 @@ app.post('/api/feature/analytics/performance', sdk.authMiddleware(), async (req,
 // 5. GSC Provider Action: Deep Sync Keywords
 app.post('/api/feature/analytics/sync', sdk.authMiddleware(), async (req, res) => {
   const { userId } = (req as any).deseo;
-  const { siteUrl, startDate, endDate } = req.body;
+  const { siteUrl: rawSiteUrl, startDate, endDate } = req.body;
+  const siteUrl = toGscSiteUrl(rawSiteUrl);
   const [tokenRecord] = await db.select().from(gscTokens).where(eq(gscTokens.deseoUserId, userId)).limit(1);
 
   if (!tokenRecord) return res.status(401).json({ success: false, error: 'Unauthorized' });
@@ -234,7 +259,8 @@ app.post('/api/feature/analytics/sync', sdk.authMiddleware(), async (req, res) =
 // 6. GSC Provider Action: List Top Pages
 app.post('/api/feature/analytics/pages', sdk.authMiddleware(), async (req, res) => {
   const { userId } = (req as any).deseo;
-  const { siteUrl, startDate, endDate } = req.body;
+  const { siteUrl: rawSiteUrl, startDate, endDate } = req.body;
+  const siteUrl = toGscSiteUrl(rawSiteUrl);
   const [tokenRecord] = await db.select().from(gscTokens).where(eq(gscTokens.deseoUserId, userId)).limit(1);
 
   if (!tokenRecord) return res.status(401).json({ success: false, error: 'Unauthorized' });
@@ -271,7 +297,7 @@ app.post('/api/feature/analytics/pages', sdk.authMiddleware(), async (req, res) 
 // 7. GSC Provider Action: Dashboard Data
 app.get('/api/feature/analytics/dashboard', sdk.authMiddleware(), async (req, res) => {
   const { userId } = (req as any).deseo;
-  const siteUrl = req.query.siteUrl as string;
+  const siteUrl = toGscSiteUrl(req.query.siteUrl as string);
   const [tokenRecord] = await db.select().from(gscTokens).where(eq(gscTokens.deseoUserId, userId)).limit(1);
 
   if (!tokenRecord) return res.status(401).json({ success: false, error: 'Unauthorized' });

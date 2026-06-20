@@ -5,15 +5,14 @@ import { trpc } from '@/utils/trpc';
 import { useClient } from '@/providers/client-provider';
 import { useRouter } from 'next/navigation';
 import { Button } from '@deseo/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@deseo/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@deseo/ui/card';
 import { Badge } from '@deseo/ui/badge';
-import { Github, FileCode, BarChart3, CheckCircle2, ChevronRight, ChevronLeft, ExternalLink, Loader2, Info, Building2 } from 'lucide-react';
+import { Github, FileCode, BarChart3, CheckCircle2, ChevronRight, ChevronLeft, Loader2, Info, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { 
   Dialog, 
   DialogContent, 
-  DialogDescription, 
   DialogHeader, 
   DialogTitle, 
   DialogTrigger,
@@ -21,6 +20,7 @@ import {
 } from '@deseo/ui/dialog';
 import { Input } from '@deseo/ui/input';
 import { Label } from '@deseo/ui/label';
+import { ModelSelector } from '@/components/model-selector';
 
 type OnboardingStep = 'CLIENT' | 'CMS' | 'ANALYTICS' | 'GIT' | 'SUMMARY';
 
@@ -30,12 +30,20 @@ export default function OnboardingPage() {
   const utils = trpc.useUtils();
   
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('CLIENT');
-  const [clientForm, setClientForm] = useState({ name: '', slug: '' });
+  const [clientForm, setClientForm] = useState({
+    name: '',
+    slug: '',
+    aiModelPreference: 'openai/gpt-4o',
+    aiSmartModel: 'anthropic/claude-sonnet-4-6',
+    aiFastModel: 'openai/gpt-4o-mini',
+    aiImageModel: 'openai/dall-e-3',
+  });
+  const [modelTab, setModelTab] = useState<'aiSmartModel' | 'aiModelPreference' | 'aiFastModel' | 'aiImageModel'>('aiSmartModel');
 
   // Sync current step with existing clients
   useEffect(() => {
     if (clients && clients.length > 0 && currentStep === 'CLIENT') {
-      if (!activeClientId) {
+      if (!activeClientId && clients[0]) {
         setActiveClientId(clients[0].id);
       }
       setCurrentStep('CMS');
@@ -67,7 +75,9 @@ export default function OnboardingPage() {
   const createClientMutation = trpc.clients.create.useMutation({
     onSuccess: (newClient) => {
       utils.clients.list.invalidate();
-      setActiveClientId(newClient.id);
+      if (newClient) {
+        setActiveClientId(newClient.id);
+      }
       setCurrentStep('CMS');
     },
   });
@@ -80,7 +90,7 @@ export default function OnboardingPage() {
       const left = window.screenX + (window.outerWidth - width) / 2;
       const top = window.screenY + (window.outerHeight - height) / 2;
       
-      const popup = window.open(
+      window.open(
         data.redirectUrl,
         'deseo-install',
         `width=${width},height=${height},left=${left},top=${top}`
@@ -190,39 +200,91 @@ export default function OnboardingPage() {
           {/* Step Content */}
           <div className="flex-1 space-y-8">
             {currentStep === 'CLIENT' && (
-              <div className="max-w-md space-y-6">
+              <div className="max-w-2xl space-y-6">
                 <div className="space-y-2">
                   <h2 className="text-3xl font-bold text-slate-900">Let&apos;s start with a Client</h2>
-                  <p className="text-slate-500">Deseo organizes work by Client. Create your first one to continue.</p>
+                  <p className="text-slate-500">Deseo organizes work by Client. Name it and pick the AI models that will power your content pipeline.</p>
                 </div>
+
                 <Card>
                   <CardContent className="pt-6 space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Client Name</Label>
-                      <Input 
-                        id="name" 
-                        placeholder="e.g. Acme Corp" 
-                        value={clientForm.name}
-                        onChange={(e) => setClientForm({ ...clientForm, name: e.target.value, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
-                      />
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Client Name</Label>
+                        <Input
+                          id="name"
+                          placeholder="e.g. Acme Corp"
+                          value={clientForm.name}
+                          autoFocus
+                          onChange={(e) => setClientForm({
+                            ...clientForm,
+                            name: e.target.value,
+                            slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+                          })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="slug">Slug (URL friendly)</Label>
+                        <Input
+                          id="slug"
+                          placeholder="acme-corp"
+                          value={clientForm.slug}
+                          onChange={(e) => setClientForm({ ...clientForm, slug: e.target.value })}
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="slug">Project Slug (URL friendly)</Label>
-                      <Input 
-                        id="slug" 
-                        placeholder="acme-corp" 
-                        value={clientForm.slug}
-                        onChange={(e) => setClientForm({ ...clientForm, slug: e.target.value })}
+
+                    <div className="pt-2 space-y-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">AI Models</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Each pipeline stage uses a different model. Pick the right tradeoff — you can change these later in client settings.</p>
+                      </div>
+
+                      {/* Model role tabs */}
+                      <div className="flex border-b border-slate-200 gap-0">
+                        {([
+                          { key: 'aiSmartModel', label: 'Orchestrator', desc: 'Plans & edits — use your best model' },
+                          { key: 'aiModelPreference', label: 'Writer', desc: 'Writes sections — quality vs. cost' },
+                          { key: 'aiFastModel', label: 'Planner', desc: 'Quick structured tasks' },
+                          { key: 'aiImageModel', label: 'Images', desc: 'Image generation' },
+                        ] as const).map((role) => (
+                          <button
+                            key={role.key}
+                            type="button"
+                            onClick={() => setModelTab(role.key)}
+                            className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${
+                              modelTab === role.key
+                                ? 'border-blue-600 text-blue-600'
+                                : 'border-transparent text-slate-500 hover:text-slate-700'
+                            }`}
+                          >
+                            {role.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="text-[11px] text-slate-500 px-0.5">
+                        {modelTab === 'aiSmartModel' && 'Plans the article blueprint and does the final editorial review. Use your most capable model here.'}
+                        {modelTab === 'aiModelPreference' && 'Writes each section in parallel. Balances quality vs. cost — runs once per section.'}
+                        {modelTab === 'aiFastModel' && 'Handles quick structured tasks like visual planning. A cheap, fast model works well.'}
+                        {modelTab === 'aiImageModel' && 'Generates article images. Must be an image model (dall-e-3, flux, recraft, etc.).'}
+                      </div>
+
+                      <ModelSelector
+                        value={clientForm[modelTab]}
+                        onChange={(val) => setClientForm((prev) => ({ ...prev, [modelTab]: val }))}
+                        imageOnly={modelTab === 'aiImageModel'}
                       />
                     </div>
                   </CardContent>
+
                   <CardFooter>
-                    <Button 
-                      className="w-full" 
-                      onClick={() => createClientMutation.mutate({ ...clientForm })}
+                    <Button
+                      className="w-full"
+                      onClick={() => createClientMutation.mutate(clientForm)}
                       disabled={!clientForm.name || !clientForm.slug || createClientMutation.isPending}
                     >
-                      {createClientMutation.isPending ? <Loader2 className="animate-spin mr-2" /> : null}
+                      {createClientMutation.isPending ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null}
                       Create Client & Continue
                     </Button>
                   </CardFooter>

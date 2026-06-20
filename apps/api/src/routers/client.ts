@@ -36,6 +36,9 @@ export const clientRouter = router({
         name: z.string(),
         slug: z.string(),
         aiModelPreference: z.string().default('openai/gpt-4o'),
+        aiSmartModel: z.string().default('anthropic/claude-sonnet-4-6'),
+        aiFastModel: z.string().default('openai/gpt-4o-mini'),
+        aiImageModel: z.string().default('openai/dall-e-3'),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -67,6 +70,9 @@ export const clientRouter = router({
         name: z.string().optional(),
         slug: z.string().optional(),
         aiModelPreference: z.string().optional(),
+        aiSmartModel: z.string().optional(),
+        aiFastModel: z.string().optional(),
+        aiImageModel: z.string().optional(),
         customData: z.any().optional(),
       })
     )

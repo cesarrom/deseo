@@ -1,4 +1,5 @@
 import { pgTable, text, timestamp, uuid, jsonb, pgPolicy, uniqueIndex } from 'drizzle-orm/pg-core';
+import { vector } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { clients } from './clients';
 import { products } from './products';
@@ -22,6 +23,7 @@ export const articles = pgTable(
     cmsPublishedId: text('cms_published_id'),
     keywords: jsonb('keywords'),
     metadata: jsonb('metadata'),
+    embedding: vector('embedding', { dimensions: 2560 }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     publishedAt: timestamp('published_at'),

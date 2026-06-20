@@ -20,12 +20,13 @@ export interface GenerateArticleInput {
   clientId: string;
   targetCMS: string;
   keywords?: string[];
+  productId?: string;
 }
 
 export async function generateArticleWorkflow(
   input: GenerateArticleInput
 ): Promise<string> {
-  const { payload, clientId, targetCMS, keywords = [] } = input;
+  const { payload, clientId, targetCMS, keywords = [], productId } = input;
 
   const context = await fetchClientContext(clientId);
 
@@ -55,6 +56,7 @@ export async function generateArticleWorkflow(
     article,
     clientId,
     targetCMS,
+    productId,
   });
 
   return articleId;

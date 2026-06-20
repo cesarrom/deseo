@@ -54,11 +54,13 @@ export async function saveArticleDraft(input: {
   article: ArticleAST;
   clientId: string;
   targetCMS: string;
+  productId?: string;
 }): Promise<string> {
   const [result] = await db
     .insert(articles)
     .values({
       clientId: input.clientId,
+      productId: input.productId,
       title: input.article.metadata.title,
       slug: input.article.metadata.slug,
       astContent: input.article,

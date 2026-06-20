@@ -1,0 +1,1 @@
+ALTER TABLE "payload_configs" ADD COLUMN "media_collection" text DEFAULT 'media' NOT NULL;

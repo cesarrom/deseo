@@ -1,9 +1,124 @@
-import { generateText } from 'ai';
+import { generateText, Output } from 'ai';
+import { z } from 'zod';
 import type { ArticleAST, ArticleMetadata, ContentNode } from '@deseo/types';
-import { createOpenRouterClient, DEFAULT_MODEL } from './client';
+import { createOpenRouterClient, DEFAULT_MODEL, SMART_MODEL } from './client';
 import { generateOutlinePrompt, generateSectionPrompt, SYSTEM_PROMPT, analyzeProductPrompt } from './prompts';
 import { generateImage } from './image-generator';
 import { parseJSON } from './utils';
+import { ProductVerticalSchema } from './suggestions';
+
+const ProductAnalysisSchema = z.object({
+  summary: z.string(),
+  targetAudience: z.array(z.string()),
+  valueProps: z.array(z.string()),
+  productVerticals: z.array(ProductVerticalSchema),
+  seoAssessment: z.object({
+    score: z.number(),
+    strengths: z.array(z.string()),
+    weaknesses: z.array(z.string()),
+    advice: z.array(z.string()),
+  }),
+  contentGaps: z.array(z.string()),
+  discoveredSubdomains: z.array(z.string()),
+});
+
+export type ProductAnalysis = z.infer<typeof ProductAnalysisSchema>;
+
+/**
+ * Parses a raw markdown string (as returned by the LLM) into typed ContentNode objects.
+ * Handles headings, ordered/unordered lists, code blocks, blockquotes, and paragraphs.
+ */
+export function parseMarkdownToNodes(markdown: string): ContentNode[] {
+  const nodes: ContentNode[] = [];
+  const lines = markdown.split('\n');
+  let id = 0;
+  const nextId = () => `node-${id++}`;
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i]!;
+    const trimmed = line.trim();
+
+    if (!trimmed) { i++; continue; }
+
+    // Fenced code block
+    if (trimmed.startsWith('```')) {
+      const lang = trimmed.slice(3).trim() || 'text';
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i]!.trim().startsWith('```')) {
+        codeLines.push(lines[i]!);
+        i++;
+      }
+      i++; // skip closing ```
+      nodes.push({ type: 'code', id: nextId(), language: lang, code: codeLines.join('\n') } as ContentNode);
+      continue;
+    }
+
+    // Heading
+    const headingMatch = trimmed.match(/^(#{1,6})\s+(.+)$/);
+    if (headingMatch) {
+      const level = headingMatch[1]!.length as 1 | 2 | 3 | 4 | 5 | 6;
+      nodes.push({ type: 'heading', id: nextId(), level, text: headingMatch[2]!.trim() } as ContentNode);
+      i++;
+      continue;
+    }
+
+    // Blockquote — collect consecutive > lines
+    if (trimmed.startsWith('> ')) {
+      const quoteLines: string[] = [];
+      while (i < lines.length && lines[i]!.trim().startsWith('> ')) {
+        quoteLines.push(lines[i]!.trim().replace(/^>\s?/, ''));
+        i++;
+      }
+      nodes.push({ type: 'blockquote', id: nextId(), text: quoteLines.join(' ') } as ContentNode);
+      continue;
+    }
+
+    // Unordered list — collect consecutive bullet lines
+    if (/^[-*+]\s/.test(trimmed)) {
+      const items: string[] = [];
+      while (i < lines.length && /^[-*+]\s/.test(lines[i]!.trim())) {
+        items.push(lines[i]!.trim().replace(/^[-*+]\s+/, ''));
+        i++;
+      }
+      nodes.push({ type: 'list', id: nextId(), ordered: false, items } as ContentNode);
+      continue;
+    }
+
+    // Ordered list — collect consecutive numbered lines
+    if (/^\d+\.\s/.test(trimmed)) {
+      const items: string[] = [];
+      while (i < lines.length && /^\d+\.\s/.test(lines[i]!.trim())) {
+        items.push(lines[i]!.trim().replace(/^\d+\.\s+/, ''));
+        i++;
+      }
+      nodes.push({ type: 'list', id: nextId(), ordered: true, items } as ContentNode);
+      continue;
+    }
+
+    // Horizontal rule
+    if (/^[-*_]{3,}$/.test(trimmed)) {
+      nodes.push({ type: 'divider', id: nextId() } as ContentNode);
+      i++;
+      continue;
+    }
+
+    // Paragraph — collect until blank line
+    const paraLines: string[] = [];
+    while (i < lines.length && lines[i]!.trim()) {
+      paraLines.push(lines[i]!);
+      i++;
+    }
+    const paraText = paraLines.join(' ').trim();
+    if (paraText) {
+      nodes.push({ type: 'paragraph', id: nextId(), text: paraText } as ContentNode);
+    }
+  }
+
+  return nodes;
+}
+
 
 interface GenerateArticleOptions {
   topic: string;
@@ -73,21 +188,7 @@ export async function generateArticleSection(
     prompt,
   });
 
-  const nodes: ContentNode[] = [];
-  const paragraphs = text.split('\n\n');
-
-  let id = 0;
-  for (const para of paragraphs) {
-    if (para.trim()) {
-      nodes.push({
-        type: 'paragraph',
-        id: `node-${id++}`,
-        text: para.trim(),
-      });
-    }
-  }
-
-  return nodes;
+  return parseMarkdownToNodes(text);
 }
 
 export async function generateFullArticle(options: GenerateArticleOptions): Promise<ArticleAST> {
@@ -159,17 +260,16 @@ export async function analyzeProduct(options: {
   pages: { url: string; content: string }[];
   apiKey?: string;
   model?: string;
-}): Promise<any> {
+}): Promise<ProductAnalysis> {
   const openrouter = createOpenRouterClient(options.apiKey);
-  const model = openrouter(options.model || DEFAULT_MODEL);
+  const model = openrouter(options.model || SMART_MODEL);
 
-  const prompt = analyzeProductPrompt(options.domain, options.pages);
-
-  const { text } = await generateText({
+  const { output } = await generateText({
     model,
-    system: SYSTEM_PROMPT,
-    prompt,
+    system: `You are a senior SEO strategist analysing a product website. Extract structured data that will be used to generate highly specific content marketing briefs. Be precise about product verticals — identify specific features, use cases, or audience segments the product serves, with their URL paths when visible in the page data.`,
+    prompt: analyzeProductPrompt(options.domain, options.pages),
+    output: Output.object({ schema: ProductAnalysisSchema }),
   });
 
-  return parseJSON(text);
+  return output;
 }

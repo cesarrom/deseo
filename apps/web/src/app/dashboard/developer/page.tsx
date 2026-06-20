@@ -15,7 +15,6 @@ import {
   Check, 
   CheckCircle2,
   Code, 
-  ExternalLink,
   Github,
   FileCode,
   BarChart3,
@@ -370,7 +369,7 @@ export default function DeveloperPage() {
                                 iconUrl: app.iconUrl || '',
                                 type: app.type as any,
                                 baseUrl: app.baseUrl,
-                                configUrl: app.configUrl,
+                                configUrl: app.configUrl || '',
                                 settingsUrl: app.settingsUrl || '',
                               });
                               setEditingAppId(app.id);
@@ -406,9 +405,9 @@ export default function DeveloperPage() {
                       
                       <div className="mt-4 flex items-center justify-between">
                          <div className="flex items-center gap-2">
-                           <div className={`h-2 w-2 rounded-full ${app.isPublished === 'true' ? 'bg-green-500' : 'bg-slate-300'}`} />
+                           <div className={`h-2 w-2 rounded-full ${app.isPublished ? 'bg-green-500' : 'bg-slate-300'}`} />
                            <span className="text-xs font-medium text-slate-600">
-                             {app.isPublished === 'true' ? 'Published' : 'Private'}
+                             {app.isPublished ? 'Published' : 'Private'}
                            </span>
                          </div>
                          <Button 
@@ -418,7 +417,7 @@ export default function DeveloperPage() {
                            onClick={() => togglePublishMutation.mutate({ id: app.id })}
                            disabled={togglePublishMutation.isPending}
                          >
-                           {app.isPublished === 'true' ? 'Make Private' : 'Publish to Marketplace'}
+                           {app.isPublished ? 'Make Private' : 'Publish to Marketplace'}
                          </Button>
                       </div>
 

@@ -20,10 +20,8 @@ export async function analyzeProductWorkflow(input: AnalyzeProductInput): Promis
   const visited = new Set<string>();
   const discoveredSubdomains = new Set<string>();
   
-  // Normalize domain to a fetchable URL
-  const domainUrl = input.domain.startsWith('sc-domain:') 
-    ? `https://${input.domain.replace('sc-domain:', '')}` 
-    : input.domain;
+  // Construct a fetchable URL from the clean domain (connector already strips prefixes)
+  const domainUrl = input.domain.startsWith('http') ? input.domain : `https://${input.domain}`;
 
   const parsedBase = new URL(domainUrl);
   // Get the base domain (e.g., askn.us from www.askn.us)

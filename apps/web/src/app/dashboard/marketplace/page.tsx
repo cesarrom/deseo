@@ -1,8 +1,7 @@
 'use client';
 
 import { trpc } from '@/utils/trpc';
-import { useClient } from '@/providers/client-provider';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@deseo/ui/card';
+import { Card, CardHeader, CardTitle, CardFooter } from '@deseo/ui/card';
 import { Badge } from '@deseo/ui/badge';
 import { Button } from '@deseo/ui/button';
 import { Github, FileCode, BarChart3, Loader2, Plus, CheckCircle2, ArrowRight, Settings } from 'lucide-react';
@@ -18,7 +17,6 @@ const iconMap = {
 
 export default function MarketplacePage() {
   const router = useRouter();
-  const { activeClientId } = useClient();
   const utils = trpc.useUtils();
   
   const { data: apps, isLoading } = trpc.registry.listAvailableApps.useQuery();
@@ -32,7 +30,7 @@ export default function MarketplacePage() {
       const left = window.screenX + (window.outerWidth - width) / 2;
       const top = window.screenY + (window.outerHeight - height) / 2;
       
-      const popup = window.open(
+      window.open(
         data.redirectUrl,
         'deseo-install',
         `width=${width},height=${height},left=${left},top=${top}`

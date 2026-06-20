@@ -3,13 +3,11 @@
 import { trpc } from '@/utils/trpc';
 import { useSession } from 'next-auth/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@deseo/ui/card';
-import { Users, FileText, Activity, Sparkles, Loader2, CheckCircle2, Circle, ArrowRight, Github, BarChart3, Layout, Globe, Package, Settings2, Plus } from 'lucide-react';
+import { FileText, Activity, Sparkles, Loader2, ArrowRight, Globe, Package, Plus } from 'lucide-react';
 import { Button } from '@deseo/ui/button';
 import { Badge } from '@deseo/ui/badge';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
 import { useClient } from '@/providers/client-provider';
-import { useState } from 'react';
 
 export default function DashboardPage() {
   const { data: session } = useSession();

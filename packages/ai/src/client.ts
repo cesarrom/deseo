@@ -29,4 +29,4 @@ export async function listModels() {
 
 export const DEFAULT_MODEL = 'openai/gpt-4o';
 export const FAST_MODEL = 'openai/gpt-4o-mini';
-export const SMART_MODEL = 'anthropic/claude-3.5-sonnet';
+export const SMART_MODEL = 'anthropic/claude-sonnet-4-6';

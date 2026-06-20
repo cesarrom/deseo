@@ -55,7 +55,7 @@ export interface GitProviderContract {
     base: string; // The target branch (usually defaultBranch)
   }): Promise<GitPullRequest>;
   getDashboardData(repository: string): Promise<GitDashboardData>;
-import { ArticleAST } from './article';
+}
 
 // --- Domain Objects (Standardized across all connectors) ---
 
@@ -63,7 +63,7 @@ export interface UnifiedPost {
   externalId: string;
   title: string;
   slug: string;
-  content: ArticleAST; // Strict Deseo AST
+  content: Record<string, unknown>;
   status: 'draft' | 'published' | 'scheduled';
   author?: string;
   publishedAt?: string;
@@ -84,8 +84,6 @@ export interface UnifiedKeywordData {
   ctr: number;
 }
 
-// --- Git Contract (feature:git) ---
-...
 // --- CMS Contract (feature:cms) ---
 
 export interface CMSCollection {

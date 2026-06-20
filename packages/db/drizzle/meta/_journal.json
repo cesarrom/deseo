@@ -22,6 +22,41 @@
       "when": 1781718303109,
       "tag": "0002_handy_mesmero",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1781908718318,
+      "tag": "0003_first_jackpot",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781908813407,
+      "tag": "0004_public_cyclops",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781910763197,
+      "tag": "0005_long_annihilus",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781918088725,
+      "tag": "0006_milky_shadow_king",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781918196001,
+      "tag": "0007_harsh_grim_reaper",
+      "breakpoints": true
     }
   ]
 }

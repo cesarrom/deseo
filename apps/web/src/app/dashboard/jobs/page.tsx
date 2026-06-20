@@ -69,13 +69,13 @@ export default function JobsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="font-mono text-xs text-slate-500">
-                      {job.workflowId || 'N/A'}
+                      {job.temporalWorkflowId || 'N/A'}
                     </TableCell>
                     <TableCell className="text-slate-500 text-sm">
                       {new Date(job.createdAt).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right text-slate-500 text-sm">
-                      {job.completedAt ? new Date(job.completedAt).toLocaleString() : '-'}
+                      {job.status === 'completed' || job.status === 'failed' ? new Date(job.updatedAt).toLocaleString() : '-'}
                     </TableCell>
                   </TableRow>
                 );

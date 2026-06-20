@@ -9,6 +9,7 @@ type Client = {
   id: string;
   name: string;
   slug: string;
+  aiModelPreference?: string | null;
 };
 
 interface ClientContextType {

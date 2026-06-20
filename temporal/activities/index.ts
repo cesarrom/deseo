@@ -1,4 +1,5 @@
 export * from './article';
+export * from './article-pipeline';
 export * from './seo';
 export * from './keyword';
 export * from './analysis';

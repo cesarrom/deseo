@@ -2,6 +2,9 @@
 set -e
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+    -- Enable pgvector in the main DB
+    CREATE EXTENSION IF NOT EXISTS vector;
+
     -- Connector Databases
     CREATE DATABASE deseo_connector_github;
     CREATE DATABASE deseo_connector_gsc;

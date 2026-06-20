@@ -11,7 +11,10 @@ export const clients = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    aiModelPreference: text('ai_model_preference').default('gpt-4o'),
+    aiModelPreference: text('ai_model_preference').default('openai/gpt-4o'),
+    aiSmartModel: text('ai_smart_model').default('anthropic/claude-sonnet-4-6'),
+    aiFastModel: text('ai_fast_model').default('openai/gpt-4o-mini'),
+    aiImageModel: text('ai_image_model').default('openai/dall-e-3'),
     customData: jsonb('custom_data'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),

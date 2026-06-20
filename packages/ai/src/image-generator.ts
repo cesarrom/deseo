@@ -1,41 +1,31 @@
-import OpenAI from 'openai';
+import { generateImage as aiGenerateImage } from 'ai';
+import { createOpenRouterClient } from './client';
+import type { ImageStorageProvider } from './storage';
 
 interface GenerateImageOptions {
   prompt: string;
   model?: string;
+  size?: '1024x1024' | '1792x1024' | '1024x1792';
   apiKey?: string;
+  storage?: ImageStorageProvider;
 }
 
 export async function generateImage(options: GenerateImageOptions): Promise<string> {
-  const key = options.apiKey || process.env.OPENROUTER_API_KEY;
-  
-  if (!key) {
-    throw new Error('OpenRouter API key is required');
-  }
+  const openrouter = createOpenRouterClient(options.apiKey);
+  const modelId = options.model ?? 'openai/dall-e-3';
 
-  // Use the native OpenAI client configured for OpenRouter
-  const openai = new OpenAI({
-    baseURL: 'https://openrouter.ai/api/v1',
-    apiKey: key,
-    defaultHeaders: {
-      'HTTP-Referer': process.env.FRONTEND_URL || 'http://localhost:3000',
-      'X-Title': 'Deseo',
-    }
-  });
-
-  const response = await openai.images.generate({
-    model: options.model || 'openai/dall-e-3',
+  const { image } = await aiGenerateImage({
+    model: openrouter.imageModel(modelId),
     prompt: options.prompt,
-    n: 1,
-    size: '1024x1024',
-    response_format: 'url',
+    size: options.size ?? '1024x1024',
   });
 
-  const url = response.data[0]?.url;
-  
-  if (!url) {
-    throw new Error('Failed to generate image');
+  if (!image.base64) throw new Error('Image generation returned no output');
+
+  if (options.storage) {
+    return await options.storage.upload(image.base64, image.mediaType);
   }
 
-  return url;
+  // Fallback: return data URL (acceptable for non-Temporal callers)
+  return `data:${image.mediaType};base64,${image.base64}`;
 }

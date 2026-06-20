@@ -24,6 +24,136 @@ import { payloadToAst } from '@deseo/ast';
 
 const sdk = new ConnectorSDK(process.env.DESEO_CLIENT_SECRET!);
 const app = express();
+
+// ---------------------------------------------------------------------------
+// Image node conversion: upload our images to Payload's media collection and
+// replace `type:"image"` nodes with Payload's native `type:"upload"` nodes.
+// ---------------------------------------------------------------------------
+
+async function uploadImageToPayloadMedia(
+  src: string,
+  altText: string,
+  instanceUrl: string,
+  apiKey: string,
+  mediaCollection = 'media',
+): Promise<string | null> {
+  console.log(`🖼️  [Payload] Uploading image to media: ${src.slice(0, 80)}`);
+  try {
+    const imageResp = await fetch(src);
+    if (!imageResp.ok) {
+      console.warn(`[Payload] Could not fetch image ${src}: ${imageResp.status}`);
+      return null;
+    }
+    const buffer = await imageResp.arrayBuffer();
+    const contentType = imageResp.headers.get('content-type') ?? 'image/png';
+    const ext = contentType.split('/')[1]?.split(';')[0] ?? 'png';
+
+    const formData = new FormData();
+    formData.append('file', new Blob([buffer], { type: contentType }), `image-${Date.now()}.${ext}`);
+    // alt is required by Payload's media collection — always send a value
+    formData.append('alt', altText || 'Article image');
+
+    const uploadResp = await fetch(`${instanceUrl}/api/${mediaCollection}`, {
+      method: 'POST',
+      headers: { Authorization: `users API-Key ${apiKey}` },
+      body: formData,
+    });
+
+    if (!uploadResp.ok) {
+      const text = await uploadResp.text();
+      console.warn(`[Payload] Media upload ${uploadResp.status}: ${text.slice(0, 300)}`);
+      return null;
+    }
+
+    const data = (await uploadResp.json()) as any;
+    const id = data?.doc?.id ?? data?.id ?? null;
+    console.log(`✅ [Payload] Image in media collection: ${id}`);
+    return id;
+  } catch (err: any) {
+    console.error('[Payload] Image upload threw:', err.message);
+    return null;
+  }
+}
+
+/** Fallback for when Payload media upload is unavailable or not configured.
+ *  Wraps the image URL in a link paragraph so it's never silently lost.
+ *  Uses Payload v3's LinkNode format: URL lives in `fields`, not at root level. */
+function imageFallbackNode(src: string, altText: string): any {
+  const label = altText || 'Image';
+  return {
+    type: 'paragraph',
+    version: 1,
+    direction: 'ltr',
+    format: '',
+    indent: 0,
+    children: [
+      {
+        type: 'link',
+        version: 3,
+        direction: 'ltr',
+        format: '',
+        indent: 0,
+        // Payload v3 LinkNode stores URL inside `fields`, not at root
+        fields: {
+          url: src,
+          newTab: true,
+          rel: 'noreferrer noopener',
+          linkType: 'custom',
+        },
+        children: [{
+          type: 'text',
+          version: 1,
+          text: `[Image: ${label}]`,
+          format: 0,
+          mode: 'normal',
+          style: '',
+          detail: 0,
+        }],
+      },
+    ],
+  };
+}
+
+async function convertImageNodes(
+  node: any,
+  instanceUrl: string,
+  apiKey: string,
+  mediaCollection = 'media',
+): Promise<any> {
+  if (!node || typeof node !== 'object') return node;
+
+  if (node.type === 'image') {
+    const src: string = node.src ?? node.url ?? '';
+    const altText: string = node.altText ?? node.alt ?? '';
+    if (!src) return null;
+
+    const mediaId = await uploadImageToPayloadMedia(src, altText, instanceUrl, apiKey, mediaCollection);
+
+    if (mediaId) {
+      // Payload-native upload node (requires UploadFeature + media collection)
+      return {
+        type: 'upload',
+        version: 3,
+        relationTo: mediaCollection,
+        value: { id: mediaId },
+        direction: null,
+        format: '',
+        indent: 0,
+      };
+    }
+
+    // Fallback: keep the image as a clickable link — never silently drop it
+    console.log(`⚠️  [Payload] Media upload failed, falling back to link for: ${src.slice(0, 60)}`);
+    return imageFallbackNode(src, altText);
+  }
+
+  if (Array.isArray(node.children)) {
+    const children = await Promise.all(node.children.map((c: any) => convertImageNodes(c, instanceUrl, apiKey, mediaCollection)));
+    return { ...node, children: children.filter(Boolean) };
+  }
+
+  return node;
+}
 const PORT = process.env.PORT || 3004;
 const HUB_URL = process.env.HUB_URL || 'http://localhost:3001/trpc';
 
@@ -79,6 +209,11 @@ app.get('/ui/configure', async (req, res) => {
                 <label style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">Collection Slug</label>
                 <input name="collection" placeholder="posts" value="articles" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid #d1d5db;" required>
               </div>
+              <div>
+                <label style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">Media Collection Slug</label>
+                <input name="mediaCollection" placeholder="media" value="media" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid #d1d5db;" required>
+                <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">The Payload collection used to store images (usually "media").</p>
+              </div>
               <button type="submit" style="margin-top: 1rem; background: #000; color: white; padding: 0.75rem; border-radius: 6px; font-weight: 600; border: none; cursor: pointer;">Save Connection</button>
             </form>
           </div>
@@ -96,7 +231,7 @@ app.use(express.urlencoded({ extended: true }));
 app.post('/ui/save-config', async (req, res) => {
   const deseoUserId = req.cookies['deseo_user_id'];
   const installationId = req.cookies['deseo_installation_id'];
-  const { instanceUrl, apiKey, collection, deseo_url } = req.body;
+  const { instanceUrl, apiKey, collection, mediaCollection = 'media', deseo_url } = req.body;
 
   console.log('🔄 [Payload] Configuration form submitted for user:', deseoUserId);
 
@@ -127,10 +262,11 @@ app.post('/ui/save-config', async (req, res) => {
           instanceUrl,
           apiKey,
           collection,
+          mediaCollection,
         })
         .onConflictDoUpdate({
           target: payloadConfigs.deseoUserId,
-          set: { instanceUrl, apiKey, collection, updatedAt: new Date() },
+          set: { instanceUrl, apiKey, collection, mediaCollection, updatedAt: new Date() },
         });
     } catch (dbError: any) {
       console.error('❌ [Payload] Database insertion failed. Full Error:', {
@@ -202,8 +338,21 @@ app.post('/api/feature/cms/publish', sdk.authMiddleware(), async (req, res) => {
   if (!config) return res.status(401).json({ success: false, error: 'CMS not configured' });
 
   try {
-    // Convert AST to Payload Blocks
-    const blocks = astToPayloadBlocks(content);
+    // Convert AST to Payload Lexical format
+    const rawBlocks = astToPayloadBlocks(content);
+
+    // Upload any external image nodes to Payload's media collection,
+    // replacing type:"image" with type:"upload" (Payload's native image node).
+    // Falls back to a link paragraph if the media upload fails.
+    const blocks = {
+      ...rawBlocks,
+      root: await convertImageNodes(
+        rawBlocks.root,
+        config.instanceUrl,
+        config.apiKey,
+        config.mediaCollection ?? 'media',
+      ),
+    };
 
     const authHeader = {
       Authorization: `users API-Key ${config.apiKey}`,
@@ -221,35 +370,34 @@ app.post('/api/feature/cms/publish', sdk.authMiddleware(), async (req, res) => {
     const existingDoc = existingDocResponse.data?.docs?.[0];
     let response;
 
+    // Sanitise slug: lowercase, hyphens only, no trailing/leading hyphens
+    const safeSlug = (slug as string)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+      || `article-${Date.now()}`;
+
+    const body = {
+      title,
+      slug: safeSlug,
+      content: blocks,
+    };
+
+    console.log(`📤 [Payload] Sending to /${config.collection}:`, JSON.stringify({ title, slug: safeSlug, contentNodeCount: blocks?.root?.children?.length }));
+
     if (existingDoc) {
-      console.log(`🔄 [Payload] Slug '${slug}' already exists. Updating document ID: ${existingDoc.id}`);
+      console.log(`🔄 [Payload] Updating document ID: ${existingDoc.id}`);
       response = await axios.patch(
         `${config.instanceUrl}/api/${config.collection}/${existingDoc.id}`,
-        {
-          title,
-          slug,
-          content: blocks,
-          layout: blocks,
-          _status: 'draft',
-        },
-        {
-          headers: authHeader,
-        }
+        body,
+        { headers: authHeader }
       );
     } else {
-      console.log(`🆕 [Payload] Slug '${slug}' does not exist. Creating new document.`);
+      console.log(`🆕 [Payload] Creating new document.`);
       response = await axios.post(
         `${config.instanceUrl}/api/${config.collection}`,
-        {
-          title,
-          slug,
-          content: blocks,
-          layout: blocks,
-          _status: 'draft',
-        },
-        {
-          headers: authHeader,
-        }
+        body,
+        { headers: authHeader }
       );
     }
 
@@ -268,8 +416,18 @@ app.post('/api/feature/cms/publish', sdk.authMiddleware(), async (req, res) => {
       },
     });
   } catch (error: any) {
-    console.error('Payload publish failed:', error.response?.data || error.message);
-    res.status(500).json({ success: false, error: error.message });
+    const payloadErrors = error.response?.data?.errors;
+    const payloadMessage = payloadErrors
+      ? payloadErrors.map((e: any) => `${e.field ? e.field + ': ' : ''}${e.message}`).join('; ')
+      : error.response?.data?.message;
+    const detail = payloadMessage || error.response?.data || error.message;
+
+    console.error('❌ [Payload] Publish failed:', JSON.stringify(error.response?.data ?? error.message));
+
+    res.status(500).json({
+      success: false,
+      error: typeof detail === 'string' ? detail : JSON.stringify(detail),
+    });
   }
 });
 
@@ -444,6 +602,11 @@ app.get('/ui/settings', async (req, res) => {
             <div>
               <label style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">Collection Slug</label>
               <input name="collection" value="${config.collection}" placeholder="posts" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid #d1d5db;" required>
+            </div>
+            <div>
+              <label style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">Media Collection Slug</label>
+              <input name="mediaCollection" value="${config.mediaCollection ?? 'media'}" placeholder="media" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid #d1d5db;" required>
+              <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">The Payload collection used to store images (usually "media").</p>
             </div>
             <button type="submit" style="margin-top: 1rem; background: #000; color: white; padding: 0.75rem; border-radius: 6px; font-weight: 600; border: none; cursor: pointer;">Update Connection</button>
           </form>

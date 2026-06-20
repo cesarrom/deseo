@@ -3,3 +3,7 @@ export * from './prompts.js';
 export * from './article-generator.js';
 export * from './image-generator.js';
 export * from './utils.js';
+export * from './agents.js';
+export * from './storage.js';
+export * from './embeddings.js';
+export * from './suggestions.js';

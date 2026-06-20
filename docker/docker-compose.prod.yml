@@ -1,58 +1,221 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: deseo-postgres-prod
-    restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - deseo-network
+  # ─── Infrastructure ────────────────────────────────────────────────────────
 
   redis:
     image: redis:7-alpine
-    container_name: deseo-redis-prod
+    container_name: deseo-redis
     restart: always
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - deseo-network
 
   temporal:
     image: temporalio/auto-setup:latest
-    container_name: deseo-temporal-prod
+    container_name: deseo-temporal
     restart: always
     environment:
-      - DB=postgresql
+      - DB=postgres12
       - DB_PORT=5432
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PWD=${POSTGRES_PASSWORD}
-      - POSTGRES_SEEDS=postgres
-    depends_on:
-      - postgres
+      - POSTGRES_SEEDS=${POSTGRES_HOST}
+    volumes:
+      - temporal_data:/etc/temporal
     networks:
       - deseo-network
+      - shared_db_net
 
   temporal-ui:
     image: temporalio/ui:latest
-    container_name: deseo-temporal-ui-prod
+    container_name: deseo-temporal-ui
     restart: always
-    ports:
-      - '8080:8080'
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=${APP_PUBLIC_URL}
     depends_on:
       - temporal
     networks:
       - deseo-network
 
+  # ─── Applications ──────────────────────────────────────────────────────────
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    container_name: deseo-api
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      # Database & cache
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      # Temporal
+      TEMPORAL_URL: temporal:7233
+      # AI
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      # Auth
+      AUTH_SECRET: ${AUTH_SECRET}
+      # OAuth providers
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      GITLAB_CLIENT_ID: ${GITLAB_CLIENT_ID}
+      GITLAB_CLIENT_SECRET: ${GITLAB_CLIENT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      # Dokploy (for spawning per-client Payload instances)
+      DOKPLOY_API_URL: ${DOKPLOY_API_URL}
+      DOKPLOY_API_KEY: ${DOKPLOY_API_KEY}
+      DOKPLOY_PROJECT_ID: ${DOKPLOY_PROJECT_ID}
+      DOKPLOY_NETWORK: ${DOKPLOY_NETWORK}
+      DOKPLOY_ENVIRONMENT_ID: ${DOKPLOY_ENVIRONMENT_ID}
+      # Connector registry credentials (shared secret between hub and each connector)
+      CONNECTOR_GITHUB_CLIENT_ID: ${CONNECTOR_GITHUB_CLIENT_ID}
+      CONNECTOR_GITHUB_CLIENT_SECRET: ${CONNECTOR_GITHUB_CLIENT_SECRET}
+      # Public-facing URL so the hub can redirect browsers to the connector UI
+      CONNECTOR_GITHUB_BASE_URL: ${CONNECTOR_GITHUB_PUBLIC_URL}
+      CONNECTOR_GSC_CLIENT_ID: ${CONNECTOR_GSC_CLIENT_ID}
+      CONNECTOR_GSC_CLIENT_SECRET: ${CONNECTOR_GSC_CLIENT_SECRET}
+      CONNECTOR_GSC_BASE_URL: ${CONNECTOR_GSC_PUBLIC_URL}
+      CONNECTOR_PAYLOAD_CLIENT_ID: ${CONNECTOR_PAYLOAD_CLIENT_ID}
+      CONNECTOR_PAYLOAD_CLIENT_SECRET: ${CONNECTOR_PAYLOAD_CLIENT_SECRET}
+      CONNECTOR_PAYLOAD_BASE_URL: ${CONNECTOR_PAYLOAD_PUBLIC_URL}
+    depends_on:
+      redis:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3001/health || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - deseo-network
+      - shared_db_net
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    container_name: deseo-web
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      AUTH_URL: ${APP_PUBLIC_URL}
+      AUTH_SECRET: ${AUTH_SECRET}
+      # Baked into the client bundle at build time — must be the public API URL
+      NEXT_PUBLIC_API_URL: ${API_PUBLIC_URL}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - deseo-network
+
+  worker:
+    build:
+      context: ..
+      dockerfile: apps/worker/Dockerfile
+    container_name: deseo-worker
+    restart: always
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      TEMPORAL_URL: temporal:7233
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      API_PORT: 3001
+    depends_on:
+      redis:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+      api:
+        condition: service_healthy
+    networks:
+      - deseo-network
+      - shared_db_net
+
+  connector-github:
+    build:
+      context: ..
+      dockerfile: apps/connector-github/Dockerfile
+    container_name: deseo-connector-github
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/deseo_connector_github
+      HUB_URL: http://api:3001/trpc
+      DESEO_CLIENT_ID: ${CONNECTOR_GITHUB_CLIENT_ID}
+      DESEO_CLIENT_SECRET: ${CONNECTOR_GITHUB_CLIENT_SECRET}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - deseo-network
+      - shared_db_net
+
+  connector-gsc:
+    build:
+      context: ..
+      dockerfile: apps/connector-gsc/Dockerfile
+    container_name: deseo-connector-gsc
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/deseo_connector_gsc
+      HUB_URL: http://api:3001/trpc
+      DESEO_CLIENT_ID: ${CONNECTOR_GSC_CLIENT_ID}
+      DESEO_CLIENT_SECRET: ${CONNECTOR_GSC_CLIENT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URL: ${CONNECTOR_GSC_PUBLIC_URL}/callback
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - deseo-network
+      - shared_db_net
+
+  connector-payload:
+    build:
+      context: ..
+      dockerfile: apps/connector-payload/Dockerfile
+    container_name: deseo-connector-payload
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3004
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/deseo_connector_payload
+      HUB_URL: http://api:3001/trpc
+      DESEO_CLIENT_ID: ${CONNECTOR_PAYLOAD_CLIENT_ID}
+      DESEO_CLIENT_SECRET: ${CONNECTOR_PAYLOAD_CLIENT_SECRET}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - deseo-network
+      - shared_db_net
+
 volumes:
-  postgres_data:
   redis_data:
+  temporal_data:
 
 networks:
   deseo-network:
     driver: bridge
+  shared_db_net:
+    external: true

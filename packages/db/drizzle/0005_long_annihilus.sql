@@ -1,0 +1,2 @@
+ALTER TABLE "clients" ALTER COLUMN "ai_smart_model" SET DEFAULT 'anthropic/claude-sonnet-4-6';--> statement-breakpoint
+UPDATE "clients" SET "ai_smart_model" = 'anthropic/claude-sonnet-4-6' WHERE "ai_smart_model" = 'anthropic/claude-3.5-sonnet';

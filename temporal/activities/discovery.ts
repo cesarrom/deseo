@@ -53,19 +53,18 @@ export async function discoverAndSyncAnalytics(params: SyncParams) {
     .where(eq(products.clientId, data.clientIdInInstallation!));
 
   for (const site of sites) {
+    // The GSC connector normalizes siteUrl to a clean domain before returning it.
     const domain = site.siteUrl;
     let existing = existingProducts.find((p) => p.domain === domain);
     let productId = existing?.id;
 
     if (!existing) {
-      // Auto-create product for explicitly registered GSC site
       console.log(`🚀 [Discovery] Auto-creating product for GSC site: ${domain}`);
-      const name = domain.replace('sc-domain:', '').replace('https://', '').replace(/\/$/, '');
       const [newProduct] = await db
         .insert(products)
         .values({
           clientId: data.clientIdInInstallation!,
-          name: name,
+          name: domain,
           domain: domain,
           type: 'website',
           config: { siteUrl: domain },
@@ -76,11 +75,11 @@ export async function discoverAndSyncAnalytics(params: SyncParams) {
         })
         .returning();
 
-      productId = newProduct.id;
+      productId = newProduct?.id;
       existing = newProduct;
     }
 
-    discoveredProducts.push({ id: productId!, domain: domain });
+    discoveredProducts.push({ id: productId!, domain });
 
     // 4. Initial Keyword Sync (Last 30 days)
     const endDate = new Date().toISOString().split('T')[0];
@@ -172,7 +171,7 @@ export async function discoverAndSyncCms(params: SyncParams) {
   // 2. Map to Products (Try to match by domain if possible, or just create generic ones)
   // For now, let's just sync posts for the first collection found
   if (collections.length > 0) {
-    const collection = collections[0].slug;
+    const collection = collections[0]?.slug;
 
     // 3. Sync Posts
     const postsResponse = await axios.get(`${data.baseUrl}/api/feature/cms/sync`, {

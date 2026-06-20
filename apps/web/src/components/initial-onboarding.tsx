@@ -1,16 +1,14 @@
 'use client';
 
 import { useClient } from '@/providers/client-provider';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { trpc } from '@/utils/trpc';
 import { Button } from '@deseo/ui/button';
-import { cn } from '@/lib/utils';
 import { Input } from '@deseo/ui/input';
 import { Label } from '@deseo/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@deseo/ui/card';
-import { Badge } from '@deseo/ui/badge';
-import { Loader2, Sparkles, CheckCircle2, Github, FileCode, Cpu, Building2 } from 'lucide-react';
+import { Loader2, Sparkles, CheckCircle2, Building2 } from 'lucide-react';
 import { ModelSelector } from './model-selector';
 
 type Step = 'INFO' | 'DONE';

@@ -1,8 +1,8 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { analyzeProduct } from '@deseo/ai';
+import { analyzeProduct, generateSuggestionsForProduct } from '@deseo/ai';
 import { db, products, suggestions, apps, installations } from '@deseo/db';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import jwt from 'jsonwebtoken';
 
 export async function discoverTopPages(params: {
@@ -61,7 +61,7 @@ export async function getProductContext(productId: string): Promise<{ summary: s
 }
 
 export async function fetchPageContent(url: string): Promise<{ content: string; links: string[] }> {
-  const targetUrl = url.startsWith('http') ? url : `https://${url.replace('sc-domain:', '')}`;
+  const targetUrl = url.startsWith('http') ? url : `https://${url}`;
   
   try {
     console.log(`🔍 [Analysis] Fetching content and links for: ${targetUrl}`);
@@ -131,11 +131,14 @@ export async function analyzeProductAndSave(params: {
   const [existingProduct] = await db.select().from(products).where(eq(products.id, productId)).limit(1);
   if (!existingProduct) throw new Error('Product not found');
 
+  const productVerticals = analysis.productVerticals ?? [];
+
   const updatedConfig = {
     ...(existingProduct.config as any || {}),
     summary: analysis.summary,
     targetAudience: analysis.targetAudience,
     valueProps: analysis.valueProps,
+    productVerticals,
     seoAssessment: analysis.seoAssessment,
     contentGaps: analysis.contentGaps,
     discoveredSubdomains: Array.from(allDiscoveredSubdomains),
@@ -143,28 +146,62 @@ export async function analyzeProductAndSave(params: {
 
   await db
     .update(products)
-    .set({
-      config: updatedConfig,
-      updatedAt: new Date(),
-    })
+    .set({ config: updatedConfig, updatedAt: new Date() })
     .where(eq(products.id, productId));
 
-  // 3. Save Suggested Articles
-  if (analysis.suggestedArticles && analysis.suggestedArticles.length > 0) {
-    console.log(`💡 [Analysis] Saving ${analysis.suggestedArticles.length} AI suggestions`);
-    
-    for (const suggestion of analysis.suggestedArticles) {
-      await db.insert(suggestions).values({
-        clientId: existingProduct.clientId,
-        productId: existingProduct.id,
-        type: 'new_article',
-        title: suggestion.title,
-        description: suggestion.reasoning,
-        aiReasoning: suggestion.reasoning,
-        context: { topic: suggestion.topic },
-        status: 'pending',
-      });
-    }
+  // 3. Clear old pending/rejected suggestions before inserting fresh ones.
+  await db
+    .delete(suggestions)
+    .where(
+      and(
+        eq(suggestions.productId, productId),
+        eq(suggestions.type, 'new_article'),
+        inArray(suggestions.status, ['pending', 'rejected']),
+      ),
+    );
+
+  // 4. Generate and save rich suggestions via the unified function.
+  const productContext = [
+    `Domain: ${domain}`,
+    `Product: ${existingProduct.name}`,
+    analysis.summary ? `Summary: ${analysis.summary}` : '',
+    analysis.targetAudience?.length ? `Target audience: ${analysis.targetAudience.join(', ')}` : '',
+    analysis.valueProps?.length ? `Value propositions: ${analysis.valueProps.join(', ')}` : '',
+    analysis.contentGaps?.length ? `Content gaps: ${analysis.contentGaps.join(', ')}` : '',
+  ].filter(Boolean).join('\n');
+
+  const generatedSuggestions = await generateSuggestionsForProduct({
+    productName: existingProduct.name,
+    domain,
+    productContext,
+    productVerticals,
+    count: 5,
+    model: activeModel,
+  });
+
+  console.log(`💡 [Analysis] Saving ${generatedSuggestions.length} AI suggestions`);
+  for (const s of generatedSuggestions) {
+    await db.insert(suggestions).values({
+      clientId: existingProduct.clientId,
+      productId: existingProduct.id,
+      type: 'new_article',
+      title: s.title,
+      description: `${s.angle} — ${s.description}`,
+      aiReasoning: `${s.whyNow} | ${s.reasoning}`,
+      context: {
+        topic: s.topic,
+        angle: s.angle,
+        keywords: s.keywords,
+        hook: s.hook,
+        targetAudience: s.targetAudience,
+        keySubheadings: s.keySubheadings,
+        whyNow: s.whyNow,
+        productVertical: s.productVertical,
+        productVerticalUrl: s.productVerticalUrl,
+        callToAction: s.callToAction,
+      },
+      status: 'pending',
+    });
   }
 
   // 4. Save Discovery Suggestions for Subdomains

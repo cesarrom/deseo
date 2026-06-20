@@ -6,6 +6,7 @@ export const payloadConfigs = pgTable('payload_configs', {
   instanceUrl: text('instance_url').notNull(),
   apiKey: text('api_key').notNull(),
   collection: text('collection').notNull(),
+  mediaCollection: text('media_collection').notNull().default('media'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => [
