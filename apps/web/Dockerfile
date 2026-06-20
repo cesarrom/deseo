@@ -4,7 +4,7 @@ RUN corepack enable pnpm
 # ── Deps ──────────────────────────────────────────────────────────────────────
 FROM base AS deps
 WORKDIR /app
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY .npmrc pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/types/package.json   ./packages/types/
 COPY packages/db/package.json      ./packages/db/
 COPY packages/config/package.json  ./packages/config/

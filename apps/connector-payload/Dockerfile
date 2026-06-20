@@ -4,7 +4,7 @@ RUN corepack enable pnpm
 # ── Deps ──────────────────────────────────────────────────────────────────────
 FROM base AS deps
 WORKDIR /app
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY .npmrc pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/connector-sdk/package.json   ./packages/connector-sdk/
 COPY packages/ast/package.json             ./packages/ast/
 COPY packages/types/package.json           ./packages/types/
@@ -24,7 +24,7 @@ RUN pnpm --filter @deseo/connector-payload build
 # ── Runtime ───────────────────────────────────────────────────────────────────
 FROM base AS runner
 WORKDIR /app
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY .npmrc pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/connector-sdk/package.json   ./packages/connector-sdk/
 COPY packages/ast/package.json             ./packages/ast/
 COPY packages/types/package.json           ./packages/types/
