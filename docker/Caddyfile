@@ -1,4 +1,4 @@
-deseo.askn.us {
+http://deseo.askn.us {
 	# API — strip /api prefix before proxying
 	handle_path /api/* {
 		reverse_proxy deseo-api:3001
