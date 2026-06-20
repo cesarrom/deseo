@@ -133,6 +133,7 @@ services:
       PORT: 3000
       AUTH_URL: ${APP_PUBLIC_URL}
       AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_TRUST_HOST: "true"
       # Baked into the client bundle at build time — must be the public API URL
       NEXT_PUBLIC_API_URL: ${API_PUBLIC_URL}
     depends_on:
