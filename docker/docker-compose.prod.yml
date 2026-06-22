@@ -134,6 +134,7 @@ services:
       AUTH_TRUST_HOST: "true"
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL}
       # Baked into the client bundle at build time — must be the public API URL
       NEXT_PUBLIC_API_URL: ${API_PUBLIC_URL}
     depends_on:
@@ -206,7 +207,7 @@ services:
       GOOGLE_CLIENT_ID: ${CONNECTOR_GSC_GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${CONNECTOR_GSC_GOOGLE_CLIENT_SECRET}
       GOOGLE_SCOPES: ${CONNECTOR_GSC_GOOGLE_SCOPES}
-      GOOGLE_REDIRECT_URL: ${CONNECTOR_GSC_PUBLIC_URL}/callback
+      GOOGLE_REDIRECT_URL: ${CONNECTOR_GSC_GOOGLE_REDIRECT_URL}/callback
     depends_on:
       deseo-migrator:
         condition: service_completed_successfully
