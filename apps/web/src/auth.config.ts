@@ -9,6 +9,7 @@ export default {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      redirectProxyUrl: process.env.GOOGLE_REDIRECT_URL || undefined,
     }),
   ],
   pages: {
