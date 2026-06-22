@@ -233,6 +233,79 @@ export async function runVisualPlannerAgent(
   return output;
 }
 
+function parseMarkdownLinksInText(text: string): any[] {
+  const parts: any[] = [];
+  const regex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    const matchIndex = match.index;
+    const anchorText = match[1]!;
+    const url = match[2]!;
+
+    if (matchIndex > lastIndex) {
+      parts.push({
+        type: 'text',
+        text: text.slice(lastIndex, matchIndex),
+        version: 1,
+        format: 0,
+      });
+    }
+
+    parts.push({
+      type: 'link',
+      url,
+      version: 1,
+      children: [
+        {
+          type: 'text',
+          text: anchorText,
+          version: 1,
+          format: 0,
+        },
+      ],
+    });
+
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push({
+      type: 'text',
+      text: text.slice(lastIndex),
+      version: 1,
+      format: 0,
+    });
+  }
+
+  return parts;
+}
+
+function processNodesLinks(nodes: any[]): any[] {
+  const result: any[] = [];
+
+  for (const node of nodes) {
+    if (!node || typeof node !== 'object') {
+      result.push(node);
+      continue;
+    }
+
+    if (node.type === 'text' && typeof node.text === 'string' && /\[([^\]]+)\]\(([^)]+)\)/.test(node.text)) {
+      result.push(...parseMarkdownLinksInText(node.text));
+    } else if (Array.isArray(node.children)) {
+      result.push({
+        ...node,
+        children: processNodesLinks(node.children),
+      });
+    } else {
+      result.push(node);
+    }
+  }
+
+  return result;
+}
+
 export async function runSectionWriterAgent(
   section: BlueprintSection,
   context: {
@@ -285,14 +358,14 @@ export async function runSectionWriterAgent(
       output: Output.array({ element: z.record(z.unknown()) }),
     });
     console.log(`✅ [Writer] ${section.id}: ${output.length} nodes`);
-    return output as LexicalNode[];
+    return processNodesLinks(output) as LexicalNode[];
   } catch {
     // Fallback: regenerate without Output constraint, parse markdown
     console.warn(`⚠️  [Writer] Structured output failed for ${section.id}, falling back to text`);
     const { text } = await generateText({ model, system: WRITER_SYSTEM_PROMPT, prompt, temperature: 0.8 });
     const nodes = markdownToLexical(text);
     console.log(`✅ [Writer] ${section.id}: ${nodes.length} nodes (fallback)`);
-    return nodes;
+    return processNodesLinks(nodes) as LexicalNode[];
   }
 }
 

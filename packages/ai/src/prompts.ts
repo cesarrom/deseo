@@ -227,6 +227,7 @@ Output a JSON array of Lexical nodes. Use these node types:
 - Paragraph: {"type":"paragraph","version":1,"children":[{"type":"text","text":"...","version":1,"format":0}]}
 - Bold text inside paragraph: format:1
 - Italic text inside paragraph: format:2
+- Link inside paragraph children: {"type":"link","url":"https://example.com","version":1,"children":[{"type":"text","text":"link text","version":1,"format":0}]}
 - Unordered list: {"type":"list","listType":"bullet","version":1,"children":[{"type":"listitem","version":1,"children":[{"type":"text","text":"item","version":1,"format":0}]}]}
 - Ordered list: {"type":"list","listType":"number","version":1,"children":[...]}
 - Code block: {"type":"code","language":"javascript","version":1,"children":[{"type":"text","text":"...","version":1,"format":16}]}

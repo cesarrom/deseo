@@ -20,6 +20,24 @@ function normalizeNode(node: any): any {
     };
   }
 
+  // Link nodes need Payload-specific fields structure
+  if (node.type === 'link') {
+    return {
+      type: 'link',
+      version: node.version ?? 3,
+      direction: node.direction ?? 'ltr',
+      format: node.format ?? '',
+      indent: node.indent ?? 0,
+      fields: {
+        url: node.url || node.fields?.url || '',
+        newTab: node.newTab ?? node.fields?.newTab ?? true,
+        linkType: node.linkType ?? node.fields?.linkType ?? 'custom',
+        rel: node.rel ?? node.fields?.rel ?? 'noreferrer noopener',
+      },
+      children: Array.isArray(node.children) ? node.children.map(normalizeNode) : [],
+    };
+  }
+
   // Element nodes need direction, format, indent
   const normalized: any = {
     ...node,
