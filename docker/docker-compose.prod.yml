@@ -185,6 +185,7 @@ services:
       DESEO_CLIENT_SECRET: ${CONNECTOR_GITHUB_CLIENT_SECRET}
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      BASE_URL: ${CONNECTOR_GITHUB_PUBLIC_URL:-${CONNECTOR_GITHUB_BASE_URL}}
     depends_on:
       deseo-migrator:
         condition: service_completed_successfully
@@ -210,6 +211,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${CONNECTOR_GSC_GOOGLE_CLIENT_SECRET}
       GOOGLE_SCOPES: ${CONNECTOR_GSC_GOOGLE_SCOPES}
       GOOGLE_REDIRECT_URL: ${CONNECTOR_GSC_GOOGLE_REDIRECT_URL}/callback
+      BASE_URL: ${CONNECTOR_GSC_PUBLIC_URL:-${CONNECTOR_GSC_BASE_URL}}
     depends_on:
       deseo-migrator:
         condition: service_completed_successfully
@@ -231,6 +233,7 @@ services:
       HUB_URL: http://deseo-api:3001/trpc
       DESEO_CLIENT_ID: ${CONNECTOR_PAYLOAD_CLIENT_ID}
       DESEO_CLIENT_SECRET: ${CONNECTOR_PAYLOAD_CLIENT_SECRET}
+      BASE_URL: ${CONNECTOR_PAYLOAD_PUBLIC_URL:-${CONNECTOR_PAYLOAD_BASE_URL}}
     depends_on:
       deseo-migrator:
         condition: service_completed_successfully

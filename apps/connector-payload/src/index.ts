@@ -156,6 +156,7 @@ async function convertImageNodes(
 }
 const PORT = process.env.PORT || 3004;
 const HUB_URL = process.env.HUB_URL || 'http://localhost:3001/trpc';
+const baseUrl = (process.env.BASE_URL || process.env.CONNECTOR_PAYLOAD_BASE_URL || '').replace(/\/$/, '');
 
 app.use(cors());
 app.use(express.json());
@@ -195,7 +196,7 @@ app.get('/ui/configure', async (req, res) => {
           <div style="background: white; padding: 2rem; border-radius: 12px; shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); border: 1px solid #e5e7eb; width: 400px;">
             <h1 style="margin-bottom: 1rem;">Connect Payload CMS</h1>
             <p style="color: #6b7280; margin-bottom: 1.5rem;">Enter your Payload details to enable one-click publishing.</p>
-            <form action="/ui/save-config" method="POST" style="display: flex; flex-direction: column; gap: 1rem;">
+            <form action="${baseUrl}/ui/save-config" method="POST" style="display: flex; flex-direction: column; gap: 1rem;">
               <input type="hidden" name="deseo_url" value="${deseo_url}">
               <div>
                 <label style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">Instance URL</label>
@@ -589,7 +590,7 @@ app.get('/ui/settings', async (req, res) => {
         <div style="background: white; padding: 2rem; border-radius: 12px; shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); border: 1px solid #e5e7eb; width: 400px;">
           <h1 style="margin-bottom: 1rem;">Payload Settings</h1>
           <p style="color: #6b7280; margin-bottom: 1.5rem;">Update your Payload CMS connection details.</p>
-          <form action="/ui/save-config" method="POST" style="display: flex; flex-direction: column; gap: 1rem;">
+          <form action="${baseUrl}/ui/save-config" method="POST" style="display: flex; flex-direction: column; gap: 1rem;">
             <input type="hidden" name="deseo_url" value="">
             <div>
               <label style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">Instance URL</label>

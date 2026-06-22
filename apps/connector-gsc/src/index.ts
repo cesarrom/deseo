@@ -42,6 +42,8 @@ const sdk = new ConnectorSDK(process.env.DESEO_CLIENT_SECRET!);
 const app = express();
 const PORT = process.env.PORT || 3003;
 const HUB_URL = process.env.HUB_URL || 'http://localhost:3001/trpc';
+const baseUrl = (process.env.BASE_URL || process.env.CONNECTOR_GSC_BASE_URL || '').replace(/\/$/, '');
+const redirectUrl = process.env.GOOGLE_REDIRECT_URL || (baseUrl ? `${baseUrl}/api/auth/google/callback` : 'http://localhost:3003/api/auth/google/callback');
 
 app.use(cors());
 app.use(express.json());
@@ -50,7 +52,7 @@ app.use(cookieParser());
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URL!,
+  redirectUrl,
 );
 
 // 1. The Configuration UI (Handshake Entrypoint from Hub)

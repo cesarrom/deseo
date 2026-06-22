@@ -22,6 +22,8 @@ const sdk = new ConnectorSDK(process.env.DESEO_CLIENT_SECRET!);
 const app = express();
 const PORT = process.env.PORT || 3002;
 const HUB_URL = process.env.HUB_URL || 'http://localhost:3001/trpc';
+const baseUrl = (process.env.BASE_URL || process.env.CONNECTOR_GITHUB_BASE_URL || '').replace(/\/$/, '');
+const redirectUri = baseUrl ? `${baseUrl}/api/auth/github/callback` : undefined;
 
 app.use(cors());
 app.use(express.json());
@@ -72,7 +74,7 @@ app.get('/ui/configure', async (req, res) => {
         <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
           <h1>Connect GitHub</h1>
           <p>Deseo User Identified: <code>${userId}</code></p>
-          <a href="https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&scope=repo,user" 
+          <a href="https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}${redirectUri ? `&redirect_uri=${redirectUri}` : ''}&scope=repo,user" 
              style="padding: 12px 24px; background: #24292e; color: white; border-radius: 6px; text-decoration: none; font-weight: bold;">
             Authorize GitHub Access
           </a>
@@ -105,6 +107,7 @@ app.get('/api/auth/github/callback', async (req, res) => {
       client_id: process.env.GITHUB_CLIENT_ID,
       client_secret: process.env.GITHUB_CLIENT_SECRET,
       code,
+      ...(redirectUri ? { redirect_uri: redirectUri } : {}),
     }, {
       headers: { Accept: 'application/json' }
     });
