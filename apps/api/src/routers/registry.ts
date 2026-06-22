@@ -273,7 +273,7 @@ export const registryRouter = router({
       // Construct the redirect URL for the connector
       const redirectUrl = new URL(app.configUrl || '', app.baseUrl);
       redirectUrl.searchParams.set('code', code);
-      redirectUrl.searchParams.set('deseo_url', process.env.FRONTEND_URL || 'http://localhost:3000');
+      redirectUrl.searchParams.set('deseo_url', process.env.FRONTEND_URL || process.env.APP_PUBLIC_URL || 'http://localhost:3000');
 
       return {
         redirectUrl: redirectUrl.toString(),

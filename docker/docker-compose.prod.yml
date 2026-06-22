@@ -69,6 +69,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
+      FRONTEND_URL: ${APP_PUBLIC_URL}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL}
       # Database & cache
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}
       REDIS_URL: redis://deseo-redis:6379
