@@ -38,8 +38,10 @@ export class ImageNode extends DecoratorNode<React.ReactNode> {
     return new ImageNode(node.__src, node.__altText, node.__caption, node.__maxWidth, node.__key);
   }
 
-  static importJSON(data: SerializedImageNode): ImageNode {
-    return $createImageNode(data.src, data.altText ?? '', data.caption ?? '', data.maxWidth ?? 1200);
+  static importJSON(data: any): ImageNode {
+    const src = data.src || data.url || '';
+    const altText = data.altText || data.alt || '';
+    return $createImageNode(src, altText, data.caption ?? '', data.maxWidth ?? 1200);
   }
 
   static importDOM(): DOMConversionMap | null {

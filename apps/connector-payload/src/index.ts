@@ -93,6 +93,7 @@ function imageFallbackNode(src: string, altText: string): any {
         direction: 'ltr',
         format: '',
         indent: 0,
+        url: src,
         // Payload v3 LinkNode stores URL inside `fields`, not at root
         fields: {
           url: src,

@@ -6,6 +6,7 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
+import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
@@ -96,6 +97,7 @@ export function LexicalArticleEditor({ initialRoot, onChange, readOnly = false }
           ErrorBoundary={LexicalErrorBoundary}
         />
         <ListPlugin />
+        <LinkPlugin />
         <HistoryPlugin />
         <OnChangePlugin onChange={handleChange} ignoreSelectionChange />
       </div>

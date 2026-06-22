@@ -22,14 +22,16 @@ function normalizeNode(node: any): any {
 
   // Link nodes need Payload-specific fields structure
   if (node.type === 'link') {
+    const url = node.url || node.fields?.url || '';
     return {
       type: 'link',
       version: node.version ?? 3,
       direction: node.direction ?? 'ltr',
       format: node.format ?? '',
       indent: node.indent ?? 0,
+      url,
       fields: {
-        url: node.url || node.fields?.url || '',
+        url,
         newTab: node.newTab ?? node.fields?.newTab ?? true,
         linkType: node.linkType ?? node.fields?.linkType ?? 'custom',
         rel: node.rel ?? node.fields?.rel ?? 'noreferrer noopener',
