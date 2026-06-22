@@ -203,7 +203,8 @@ export const articleRouter = router({
             { expiresIn: '5m' }
           );
 
-          const url = new URL(`/api/feature/cms/publish`, installation.baseUrl).toString();
+          const cleanBase = installation.baseUrl.endsWith('/') ? installation.baseUrl : `${installation.baseUrl}/`;
+          const url = new URL('api/feature/cms/publish', cleanBase).toString();
           const response = await axios({
             method: 'POST',
             url,

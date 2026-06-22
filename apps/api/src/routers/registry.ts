@@ -539,7 +539,9 @@ export const registryRouter = router({
           { expiresIn: '5m' }
         );
 
-        const url = new URL(`/api/feature/${input.actionPath}`, installation.baseUrl).toString();
+        const cleanBase = installation.baseUrl.endsWith('/') ? installation.baseUrl : `${installation.baseUrl}/`;
+        const cleanPath = `api/feature/${input.actionPath.replace(/^\//, '')}`;
+        const url = new URL(cleanPath, cleanBase).toString();
         const response = await axios({
           method: input.method,
           url,
