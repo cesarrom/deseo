@@ -158,6 +158,8 @@ services:
       TEMPORAL_URL: deseo-temporal:7233
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       API_PORT: 3001
+      IMAGE_STORAGE_URL: http://deseo-api:3001/api/images/upload
+      HUB_URL: http://deseo-api:3001/trpc
     depends_on:
       deseo-migrator:
         condition: service_completed_successfully
