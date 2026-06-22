@@ -1,4 +1,4 @@
-FROM node:24-slim AS base
+FROM node:24.16-slim AS base
 RUN corepack enable pnpm
 
 # ── Deps ──────────────────────────────────────────────────────────────────────
