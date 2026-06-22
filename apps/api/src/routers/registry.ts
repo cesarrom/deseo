@@ -270,8 +270,10 @@ export const registryRouter = router({
 
       const { app, code } = result;
 
-      // Construct the redirect URL for the connector
-      const redirectUrl = new URL(app.configUrl || '', app.baseUrl);
+      // Construct the redirect URL for the connector preserving baseUrl subpath
+      const cleanBase = app.baseUrl.endsWith('/') ? app.baseUrl : `${app.baseUrl}/`;
+      const cleanPath = (app.configUrl || '').startsWith('/') ? (app.configUrl || '').substring(1) : (app.configUrl || '');
+      const redirectUrl = new URL(cleanPath, cleanBase);
       redirectUrl.searchParams.set('code', code);
       redirectUrl.searchParams.set('deseo_url', process.env.FRONTEND_URL || process.env.APP_PUBLIC_URL || 'http://localhost:3000');
 
