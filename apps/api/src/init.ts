@@ -53,7 +53,27 @@ export async function initializeConnectors() {
     const [existing] = await db.select().from(apps).where(eq(apps.slug, connector.slug)).limit(1);
 
     if (existing) {
-      console.log(`✅ Connector ${connector.name} already registered.`);
+      console.log(`✅ Connector ${connector.name} already registered. Checking for updates...`);
+      
+      const needsUpdate = 
+        existing.baseUrl !== connector.baseUrl ||
+        existing.clientId !== connector.clientId ||
+        existing.clientSecret !== connector.clientSecret ||
+        existing.name !== connector.name ||
+        existing.description !== connector.description;
+
+      if (needsUpdate) {
+        console.log(`🔄 Updating connector ${connector.name} configuration in database...`);
+        await db.update(apps)
+          .set({
+            name: connector.name,
+            baseUrl: connector.baseUrl,
+            clientId: connector.clientId,
+            clientSecret: connector.clientSecret,
+            description: connector.description,
+          })
+          .where(eq(apps.slug, connector.slug));
+      }
       continue;
     }
 
