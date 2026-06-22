@@ -29,7 +29,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - deseo-network
+      - shared_db_net
 
   deseo-temporal:
     image: temporalio/auto-setup:latest
@@ -44,7 +44,6 @@ services:
     volumes:
       - temporal_data:/etc/temporal
     networks:
-      - deseo-network
       - shared_db_net
 
   deseo-temporal-ui:
@@ -57,7 +56,7 @@ services:
     depends_on:
       - deseo-temporal
     networks:
-      - deseo-network
+      - shared_db_net
 
   # ─── Applications ──────────────────────────────────────────────────────────
 
@@ -117,7 +116,6 @@ services:
       retries: 3
       start_period: 20s
     networks:
-      - deseo-network
       - shared_db_net
 
   deseo-web:
@@ -140,7 +138,7 @@ services:
       deseo-api:
         condition: service_healthy
     networks:
-      - deseo-network
+      - shared_db_net
 
   deseo-worker:
     build:
@@ -165,7 +163,6 @@ services:
       deseo-api:
         condition: service_healthy
     networks:
-      - deseo-network
       - shared_db_net
 
   deseo-connector-github:
@@ -189,7 +186,6 @@ services:
       deseo-api:
         condition: service_healthy
     networks:
-      - deseo-network
       - shared_db_net
 
   deseo-connector-gsc:
@@ -215,7 +211,6 @@ services:
       deseo-api:
         condition: service_healthy
     networks:
-      - deseo-network
       - shared_db_net
 
   deseo-connector-payload:
@@ -237,7 +232,6 @@ services:
       deseo-api:
         condition: service_healthy
     networks:
-      - deseo-network
       - shared_db_net
 
   deseo-caddy:
@@ -251,15 +245,21 @@ services:
         condition: service_started
       deseo-api:
         condition: service_healthy
+    environment:
+      WEB_HOST: ${WEB_HOST:-deseo-web}
+      API_HOST: ${API_HOST:-deseo-api}
+      CONNECTOR_GITHUB_HOST: ${CONNECTOR_GITHUB_HOST:-deseo-connector-github}
+      CONNECTOR_GSC_HOST: ${CONNECTOR_GSC_HOST:-deseo-connector-gsc}
+      CONNECTOR_PAYLOAD_HOST: ${CONNECTOR_PAYLOAD_HOST:-deseo-connector-payload}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
-      - deseo-network
+      - shared_db_net
 
 volumes:
   redis_data:
   temporal_data:
 
 networks:
-  deseo-network:
-    driver: bridge
   shared_db_net:
     external: true

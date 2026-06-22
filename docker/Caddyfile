@@ -1,5 +1,15 @@
 http://deseo.askn.us {
-	# API — strip /api prefix before proxying
+	# Match all /api/* paths except /api/auth/* (which belongs to NextAuth in the web project)
+	@api_routes {
+		path /api/*
+		not path /api/auth/*
+	}
+	handle @api_routes {
+		uri strip_prefix /api
+		reverse_proxy {$API_HOST:deseo-api}:3001
+	}
+
+	# API — strip /server prefix before proxying (legacy/alternative)
 	handle_path /server/* {
 		reverse_proxy deseo-api:3001
 	}
