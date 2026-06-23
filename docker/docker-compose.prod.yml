@@ -198,6 +198,8 @@ services:
         condition: service_completed_successfully
       deseo-api:
         condition: service_healthy
+    volumes:
+      - ../github_pk.pem:/app/apps/connector-github/github_pk.pem:ro
     networks:
       - shared_db_net
 
@@ -222,6 +224,8 @@ services:
         condition: service_completed_successfully
       deseo-api:
         condition: service_healthy
+    volumes:
+      - ../github_pk.pem:/app/apps/connector-github-cms/github_pk.pem:ro
     networks:
       - shared_db_net
 
