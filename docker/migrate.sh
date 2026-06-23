@@ -7,6 +7,9 @@ DATABASE_URL="$DATABASE_URL" pnpm --filter @deseo/db db:migrate
 echo "▶ Running connector-github migrations..."
 DATABASE_URL="$CONNECTOR_GITHUB_DATABASE_URL" pnpm --filter @deseo/connector-github db:migrate
 
+echo "▶ Running connector-github-cms migrations..."
+DATABASE_URL="$CONNECTOR_GITHUB_CMS_DATABASE_URL" pnpm --filter @deseo/connector-github-cms db:migrate
+
 echo "▶ Running connector-gsc migrations..."
 DATABASE_URL="$CONNECTOR_GSC_DATABASE_URL" pnpm --filter @deseo/connector-gsc db:migrate
 

@@ -23,6 +23,16 @@ export async function initializeConnectors() {
       description: 'Automate SEO fixes directly in your codebase via Pull Requests.'
     },
     {
+      name: 'GitHub (CMS)',
+      slug: 'github-cms',
+      type: 'feature:cms' as const,
+      baseUrl: process.env.CONNECTOR_GITHUB_CMS_BASE_URL || 'http://localhost:3005',
+      configUrl: '/ui/configure',
+      clientId: process.env.CONNECTOR_GITHUB_CMS_CLIENT_ID,
+      clientSecret: process.env.CONNECTOR_GITHUB_CMS_CLIENT_SECRET,
+      description: 'Publish AI-generated content directly to your GitHub repository as Markdown/MDX files.'
+    },
+    {
       name: 'Google Search Console',
       slug: 'gsc',
       type: 'feature:analytics' as const,

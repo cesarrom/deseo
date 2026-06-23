@@ -1,6 +1,7 @@
-import { proxyActivities } from '@temporalio/workflow';
+import { proxyActivities, executeChild } from '@temporalio/workflow';
 import type * as pipelineActivities from '../activities/article-pipeline';
 import type { BlueprintSection, ImageSpec, LexicalNode } from '@deseo/ai';
+import type { gitCmsPublishWorkflow } from './gitCmsPublish';
 
 const {
   runDirectorActivity,
@@ -32,6 +33,7 @@ export interface GenerateArticleV2Input {
   suggestionId?: string;
   verticalUrl?: string;
   suggestionContext?: { title: string; description: string; angle?: string; hook?: string; targetAudience?: string; keySubheadings?: string[]; whyNow?: string; productVertical?: string; productVerticalUrl?: string; callToAction?: string };
+  userId?: string;
 }
 
 /**
@@ -47,7 +49,7 @@ export interface GenerateArticleV2Input {
 export async function generateArticleWorkflowV2(
   input: GenerateArticleV2Input
 ): Promise<string> {
-  const { topic, keywords = [], clientId, productId, targetCMS = '', generateImages = true, suggestionId, verticalUrl, suggestionContext } = input;
+  const { topic, keywords = [], clientId, productId, targetCMS = '', generateImages = true, suggestionId, verticalUrl, suggestionContext, userId = '' } = input;
 
   // --- Fetch context ---
   const { productContext, targetAudience, productDomain } = await getProductContextV2(productId);
@@ -146,6 +148,20 @@ export async function generateArticleWorkflowV2(
     targetCMS,
     suggestionId,
   });
+
+  if (targetCMS === 'github-cms' && userId) {
+    await executeChild<typeof gitCmsPublishWorkflow>('gitCmsPublishWorkflow', {
+      args: [{
+        userId,
+        appSlug: 'github-cms',
+        astContent: finalRoot,
+        productConfig: { productContext: enrichedProductContext },
+        targetRepo: '', // The agent will determine this or it should be in product config
+        branchName: `deseo-article-${blueprint.slug}-${Date.now()}`
+      }],
+      workflowId: `git-cms-${blueprint.slug}-${Date.now()}`,
+    });
+  }
 
   return articleId;
 }

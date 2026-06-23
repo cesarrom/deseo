@@ -16,7 +16,12 @@ http://deseo.askn.us {
 
 	# GitHub connector
 	handle_path /connectors/github/* {
-		reverse_proxy deseo-connector-github:3002
+		reverse_proxy {$CONNECTOR_GITHUB_HOST:deseo-connector-github}:3002
+	}
+
+	# GitHub CMS connector
+	handle_path /connectors/github-cms/* {
+		reverse_proxy {$CONNECTOR_GITHUB_CMS_HOST:deseo-connector-github-cms}:3005
 	}
 
 	# GSC connector

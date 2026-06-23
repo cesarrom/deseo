@@ -648,4 +648,67 @@ export const registryRouter = router({
         });
       }
     }),
+
+  // Hub: Receive webhooks from connectors and trigger workflows
+  dispatchWebhook: publicProcedure
+    .input(
+      z.object({
+        clientId: z.string(),
+        clientSecret: z.string(),
+        appSlug: z.string(),
+        event: z.string(),
+        payload: z.any(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Verify app credentials
+      const app = await ctx.withDB(async (tx) => {
+        const [app] = await tx
+          .select()
+          .from(apps)
+          .where(
+            and(
+              eq(apps.clientId, input.clientId),
+              eq(apps.clientSecret, input.clientSecret),
+              eq(apps.slug, input.appSlug)
+            )
+          )
+          .limit(1);
+        return app;
+      });
+
+      if (!app) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid client credentials' });
+      }
+
+      // Trigger the appropriate Temporal workflow
+      try {
+        if (input.appSlug === 'github' && input.event === 'push') {
+          // We assume the payload contains the installation context mapping, e.g. userId and targetRepo
+          const { userId, repository } = input.payload;
+          
+          if (userId && repository) {
+            await ctx.temporal.workflow.start('gitSeoOptimizeWorkflow', {
+              taskQueue: 'deseo-main-queue',
+              workflowId: `seo-webhook-${repository.replace(/[^a-zA-Z0-9-]/g, '-')}-${Date.now()}`,
+              args: [
+                {
+                  userId,
+                  appSlug: input.appSlug,
+                  targetRepo: repository,
+                  eventPayload: input.payload,
+                },
+              ],
+            });
+          }
+        }
+        return { success: true };
+      } catch (error: any) {
+        console.error('Failed to dispatch webhook to temporal:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: `Failed to dispatch webhook: ${error.message}`,
+        });
+      }
+    }),
 });

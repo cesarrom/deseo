@@ -11,6 +11,7 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}
       CONNECTOR_GITHUB_DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/deseo_connector_github
       CONNECTOR_GSC_DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/deseo_connector_gsc
+      CONNECTOR_GITHUB_CMS_DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/deseo_connector_github_cms
       CONNECTOR_PAYLOAD_DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/deseo_connector_payload
     networks:
       - shared_db_net
@@ -99,6 +100,9 @@ services:
       CONNECTOR_GITHUB_CLIENT_SECRET: ${CONNECTOR_GITHUB_CLIENT_SECRET}
       # Public-facing URL so the hub can redirect browsers to the connector UI
       CONNECTOR_GITHUB_BASE_URL: ${CONNECTOR_GITHUB_PUBLIC_URL:-${CONNECTOR_GITHUB_BASE_URL}}
+      CONNECTOR_GITHUB_CMS_CLIENT_ID: ${CONNECTOR_GITHUB_CMS_CLIENT_ID}
+      CONNECTOR_GITHUB_CMS_CLIENT_SECRET: ${CONNECTOR_GITHUB_CMS_CLIENT_SECRET}
+      CONNECTOR_GITHUB_CMS_BASE_URL: ${CONNECTOR_GITHUB_CMS_PUBLIC_URL:-${CONNECTOR_GITHUB_CMS_BASE_URL}}
       CONNECTOR_GSC_CLIENT_ID: ${CONNECTOR_GSC_CLIENT_ID}
       CONNECTOR_GSC_CLIENT_SECRET: ${CONNECTOR_GSC_CLIENT_SECRET}
       CONNECTOR_GSC_BASE_URL: ${CONNECTOR_GSC_PUBLIC_URL:-${CONNECTOR_GSC_BASE_URL}}
@@ -197,6 +201,30 @@ services:
     networks:
       - shared_db_net
 
+  deseo-connector-github-cms:
+    build:
+      context: ..
+      dockerfile: apps/connector-github-cms/Dockerfile
+    container_name: deseo-connector-github-cms
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3005
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/deseo_connector_github_cms
+      HUB_URL: http://deseo-api:3001/trpc
+      DESEO_CLIENT_ID: ${CONNECTOR_GITHUB_CMS_CLIENT_ID}
+      DESEO_CLIENT_SECRET: ${CONNECTOR_GITHUB_CMS_CLIENT_SECRET}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      CONNECTOR_GITHUB_CMS_BASE_URL: ${CONNECTOR_GITHUB_CMS_PUBLIC_URL:-${CONNECTOR_GITHUB_CMS_BASE_URL}}
+    depends_on:
+      deseo-migrator:
+        condition: service_completed_successfully
+      deseo-api:
+        condition: service_healthy
+    networks:
+      - shared_db_net
+
   deseo-connector-gsc:
     build:
       context: ..
@@ -260,6 +288,7 @@ services:
       WEB_HOST: ${WEB_HOST:-deseo-web}
       API_HOST: ${API_HOST:-deseo-api}
       CONNECTOR_GITHUB_HOST: ${CONNECTOR_GITHUB_HOST:-deseo-connector-github}
+      CONNECTOR_GITHUB_CMS_HOST: ${CONNECTOR_GITHUB_CMS_HOST:-deseo-connector-github-cms}
       CONNECTOR_GSC_HOST: ${CONNECTOR_GSC_HOST:-deseo-connector-gsc}
       CONNECTOR_PAYLOAD_HOST: ${CONNECTOR_PAYLOAD_HOST:-deseo-connector-payload}
     extra_hosts:

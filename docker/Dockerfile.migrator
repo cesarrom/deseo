@@ -10,6 +10,7 @@ COPY packages/db/package.json                   ./packages/db/
 COPY packages/types/package.json                ./packages/types/
 COPY packages/config/package.json               ./packages/config/
 COPY apps/connector-github/package.json         ./apps/connector-github/
+COPY apps/connector-github-cms/package.json     ./apps/connector-github-cms/
 COPY apps/connector-gsc/package.json            ./apps/connector-gsc/
 COPY apps/connector-payload/package.json        ./apps/connector-payload/
 
@@ -21,6 +22,8 @@ COPY packages/types/                ./packages/types/
 COPY packages/config/               ./packages/config/
 COPY apps/connector-github/db/      ./apps/connector-github/db/
 COPY apps/connector-github/drizzle.config.ts ./apps/connector-github/
+COPY apps/connector-github-cms/db/      ./apps/connector-github-cms/db/
+COPY apps/connector-github-cms/drizzle.config.ts ./apps/connector-github-cms/
 COPY apps/connector-gsc/db/         ./apps/connector-gsc/db/
 COPY apps/connector-gsc/drizzle.config.ts    ./apps/connector-gsc/
 COPY apps/connector-payload/db/     ./apps/connector-payload/db/

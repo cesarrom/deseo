@@ -170,6 +170,61 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  apps/connector-github-cms:
+    dependencies:
+      '@deseo/connector-sdk':
+        specifier: workspace:*
+        version: link:../../packages/connector-sdk
+      axios:
+        specifier: ^1.7.9
+        version: 1.17.0
+      cookie-parser:
+        specifier: ^1.4.7
+        version: 1.4.7
+      cors:
+        specifier: ^2.8.5
+        version: 2.8.6
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.4.7
+      drizzle-orm:
+        specifier: ^0.38.4
+        version: 0.38.4(@opentelemetry/api@1.9.0)(@types/pg@8.20.0)(@types/react@19.2.17)(pg@8.20.0)(postgres@3.4.9)(react@19.2.7)
+      express:
+        specifier: ^4.21.2
+        version: 4.22.2
+      postgres:
+        specifier: ^3.4.9
+        version: 3.4.9
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@types/cookie-parser':
+        specifier: ^1.4.8
+        version: 1.4.10(@types/express@5.0.6)
+      '@types/cors':
+        specifier: ^2.8.17
+        version: 2.8.19
+      '@types/express':
+        specifier: ^5.0.0
+        version: 5.0.6
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.19.9
+      dotenv-cli:
+        specifier: ^11.0.0
+        version: 11.0.0
+      drizzle-kit:
+        specifier: ^0.31.10
+        version: 0.31.10
+      tsx:
+        specifier: ^4.19.2
+        version: 4.21.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.7.3
+
   apps/connector-gsc:
     dependencies:
       '@deseo/connector-sdk':
