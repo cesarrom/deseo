@@ -1,6 +1,6 @@
 'use client';
 
-import { trpc } from '@/utils/trpc';
+import { useProducts } from '@deseo/api-client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@deseo/ui/card';
 import { Package, Globe, ArrowRight, Loader2, Search, Plus, Filter } from 'lucide-react';
 import { Button } from '@deseo/ui/button';
@@ -14,10 +14,7 @@ export default function ProductsPage() {
   const { activeClientId } = useClient();
   const [search, setSearch] = useState('');
 
-  const { data: products, isLoading } = trpc.products.list.useQuery(
-    undefined,
-    { enabled: !!activeClientId }
-  );
+  const { data: products, isLoading } = useProducts({ enabled: !!activeClientId });
 
   const filteredProducts = products?.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase()) || 

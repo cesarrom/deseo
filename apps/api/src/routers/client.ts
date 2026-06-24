@@ -37,7 +37,7 @@ export const clientRouter = router({
         slug: z.string(),
         aiModelPreference: z.string().default('openai/gpt-4o'),
         aiSmartModel: z.string().default('anthropic/claude-sonnet-4-6'),
-        aiFastModel: z.string().default('openai/gpt-4o-mini'),
+        aiFastModel: z.string().default('openrouter/free'),
         aiImageModel: z.string().default('openai/dall-e-3'),
       })
     )

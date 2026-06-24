@@ -1,6 +1,6 @@
 'use client';
 
-import { trpc } from '@/utils/trpc';
+import { trpc, useAvailableApps, useInstallations, useInstallApp } from '@deseo/api-client';
 import { Card, CardHeader, CardTitle, CardFooter } from '@deseo/ui/card';
 import { Badge } from '@deseo/ui/badge';
 import { Button } from '@deseo/ui/button';
@@ -19,10 +19,10 @@ export default function MarketplacePage() {
   const router = useRouter();
   const utils = trpc.useUtils();
   
-  const { data: apps, isLoading } = trpc.registry.listAvailableApps.useQuery();
-  const { data: installations } = trpc.registry.listInstallations.useQuery();
+  const { data: apps, isLoading } = useAvailableApps();
+  const { data: installations } = useInstallations();
 
-  const installMutation = trpc.registry.installApp.useMutation({
+  const installMutation = useInstallApp({
     onSuccess: (data) => {
       // Open popup for config
       const width = 600;

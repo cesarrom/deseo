@@ -2,7 +2,23 @@
 
 import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { trpc } from '@/utils/trpc';
+import {
+  trpc,
+  useProduct,
+  useSuggestions,
+  useArticles,
+  useAnalyticsDashboard,
+  useInstallations,
+  useCreateJob,
+  usePublishArticle,
+  useUpdateArticleStatus,
+  useReevaluateProduct,
+  useGenerateCustomSuggestions,
+  useUpdateArticleWithPrompt,
+  useUpdateArticleContent,
+  useRejectSuggestion,
+  useDiscoverTrendingKeywords,
+} from '@deseo/api-client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@deseo/ui/card';
 import { 
   Dialog, 
@@ -67,34 +83,29 @@ export default function ProductConsolePage() {
   const [editorRoot, setEditorRoot] = useState<unknown>(null);
   const [verticalUrl, setVerticalUrl] = useState('');
 
-  const { data: product, isLoading: productLoading } = trpc.products.getById.useQuery(
-    { id },
-    { enabled: !!id && !!activeClientId }
-  );
+  const { data: product, isLoading: productLoading } = useProduct(id, { enabled: !!id && !!activeClientId });
 
-  const { data: suggestions, isLoading: suggestionsLoading } = trpc.intelligence.listSuggestions.useQuery(
+  const { data: suggestions, isLoading: suggestionsLoading } = useSuggestions(
     { productId: id },
-    { enabled: !!id }
+    { enabled: !!id },
   );
 
-  const { data: articles, isLoading: articlesLoading } = trpc.article.list.useQuery(
+  const { data: articles, isLoading: articlesLoading } = useArticles(
     { productId: id },
-    { enabled: !!id }
+    { enabled: !!id },
   );
 
-  // We fetch analytics dashboard if the product has a siteUrl configured
   const siteUrl = (product?.config as any)?.siteUrl;
-  const { data: analytics } = trpc.dashboard.getAnalyticsDashboard.useQuery(
-    { appSlug: 'gsc', siteUrl },
-    { enabled: !!siteUrl }
+  const { data: analytics } = useAnalyticsDashboard(
+    { appSlug: 'gsc', siteUrl: siteUrl ?? '' },
+    { enabled: !!siteUrl },
   );
 
-  // Mutations
-  const { data: installations } = trpc.registry.listInstallations.useQuery();
+  const { data: installations } = useInstallations();
   const cmsInstallation = installations?.find(i => i.app.type === 'feature:cms' && i.status === 'active');
   const cmsInstallations = installations?.filter(i => i.app.type === 'feature:cms' && i.status === 'active') || [];
 
-  const generateDraftMutation = trpc.job.create.useMutation({
+  const generateDraftMutation = useCreateJob({
     onSuccess: (data) => {
       alert(`Article generation started! Job ID: ${data.id}`);
       utils.article.list.invalidate({ productId: id });
@@ -104,7 +115,7 @@ export default function ProductConsolePage() {
     }
   });
 
-  const publishMutation = trpc.article.publishToCms.useMutation({
+  const publishMutation = usePublishArticle({
     onSuccess: (data) => {
       const successes = data.filter(r => r.success);
       const errors = data.filter(r => !r.success);
@@ -135,7 +146,7 @@ export default function ProductConsolePage() {
     }
   });
 
-  const updateStatusMutation = trpc.article.updateStatus.useMutation({
+  const updateStatusMutation = useUpdateArticleStatus({
     onSuccess: (updatedArticle) => {
       utils.article.list.invalidate({ productId: id });
       alert('Article status updated!');
@@ -152,7 +163,7 @@ export default function ProductConsolePage() {
     }
   });
 
-  const reevaluateMutation = trpc.products.reevaluate.useMutation({
+  const reevaluateMutation = useReevaluateProduct({
     onSuccess: () => {
       alert('Product re-evaluation started! Check back in a few minutes.');
     },
@@ -161,7 +172,7 @@ export default function ProductConsolePage() {
     }
   });
 
-  const customSuggestionsMutation = trpc.intelligence.generateCustomSuggestions.useMutation({
+  const customSuggestionsMutation = useGenerateCustomSuggestions({
     onSuccess: () => {
       alert('Custom suggestions generated!');
       utils.intelligence.listSuggestions.invalidate({ productId: id });
@@ -172,7 +183,7 @@ export default function ProductConsolePage() {
     }
   });
 
-  const articleEditMutation = trpc.article.updateWithPrompt.useMutation({
+  const articleEditMutation = useUpdateArticleWithPrompt({
     onSuccess: (updatedArticle) => {
       alert('Article updated by AI!');
       setArticleEditPrompt('');
@@ -186,7 +197,7 @@ export default function ProductConsolePage() {
     }
   });
 
-  const saveContentMutation = trpc.article.updateContent.useMutation({
+  const saveContentMutation = useUpdateArticleContent({
     onSuccess: (updatedArticle) => {
       utils.article.list.invalidate({ productId: id });
       if (selectedItem?.type === 'article' && updatedArticle) {
@@ -198,11 +209,11 @@ export default function ProductConsolePage() {
     },
   });
 
-  const rejectSuggestionMutation = trpc.intelligence.rejectSuggestion.useMutation({
+  const rejectSuggestionMutation = useRejectSuggestion({
     onSuccess: () => utils.intelligence.listSuggestions.invalidate({ productId: id }),
   });
 
-  const trendingKeywordsMutation = trpc.intelligence.discoverTrendingKeywords.useMutation({
+  const trendingKeywordsMutation = useDiscoverTrendingKeywords({
     onSuccess: () => {
       utils.products.getById.invalidate({ id });
     },

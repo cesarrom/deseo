@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
-import { trpc } from '@/utils/trpc';
+import { useClients } from '@deseo/api-client';
 import { useSession } from 'next-auth/react';
 import { Loader2 } from 'lucide-react';
 
@@ -28,10 +28,7 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
   const [activeClientId, setActiveClientId] = useState<string | null>(null);
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 
-  const { data: clients, isLoading } = trpc.clients.list.useQuery(
-    { userId: session?.user?.id || '' },
-    { enabled: !!session?.user?.id }
-  );
+  const { data: clients, isLoading } = useClients({ enabled: !!session?.user?.id });
 
   useEffect(() => {
     // Auto-select first client if none selected

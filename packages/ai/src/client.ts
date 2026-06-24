@@ -28,5 +28,5 @@ export async function listModels() {
 }
 
 export const DEFAULT_MODEL = 'openai/gpt-4o';
-export const FAST_MODEL = 'openai/gpt-4o-mini';
+export const FAST_MODEL = 'openrouter/free';
 export const SMART_MODEL = 'anthropic/claude-sonnet-4-6';

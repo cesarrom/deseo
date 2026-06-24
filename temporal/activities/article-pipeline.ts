@@ -75,7 +75,7 @@ export async function getPipelineModelConfig(
   return {
     writerModel: client?.aiModelPreference ?? 'openai/gpt-4o',
     smartModel: client?.aiSmartModel ?? 'anthropic/claude-3.5-sonnet',
-    fastModel: client?.aiFastModel ?? 'openai/gpt-4o-mini',
+    fastModel: client?.aiFastModel ?? 'openrouter/free',
     imageModel: client?.aiImageModel ?? 'openai/dall-e-3',
   };
 }

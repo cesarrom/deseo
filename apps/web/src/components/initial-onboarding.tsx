@@ -3,7 +3,7 @@
 import { useClient } from '@/providers/client-provider';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { trpc } from '@/utils/trpc';
+import { trpc, useCreateClient } from '@deseo/api-client';
 import { Button } from '@deseo/ui/button';
 import { Input } from '@deseo/ui/input';
 import { Label } from '@deseo/ui/label';
@@ -23,7 +23,7 @@ export function InitialOnboarding() {
   const [slug, setSlug] = useState('');
   const [aiModelPreference, setAiModelPreference] = useState('openai/gpt-4o');
 
-  const createMutation = trpc.clients.create.useMutation({
+  const createMutation = useCreateClient({
     onSuccess: (data) => {
       utils.clients.list.invalidate();
       if (data?.id) {

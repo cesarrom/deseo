@@ -7,7 +7,9 @@ import { appRouter } from './router';
 import { createContext } from './context';
 import { initializeConnectors } from './init';
 import { startTrendingKeywordsCron } from './cron/trending-keywords';
+import { startGscSyncCron } from './cron/gsc-sync';
 import { imageRouter } from './routes/images';
+import { authRouter } from './routes/auth';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -28,6 +30,7 @@ app.use(
 );
 
 app.use('/api/images', imageRouter);
+app.use('/api/auth', authRouter);
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -75,5 +78,6 @@ app.listen(PORT, async () => {
 
   // Start background cron jobs
   startTrendingKeywordsCron();
+  startGscSyncCron();
 });
 

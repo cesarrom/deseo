@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { trpc } from '@/utils/trpc';
+import { trpc, useAvailableApps, useInstallations, useCreateClient, useInstallApp } from '@deseo/api-client';
 import { useClient } from '@/providers/client-provider';
 import { useRouter } from 'next/navigation';
 import { Button } from '@deseo/ui/button';
@@ -35,7 +35,7 @@ export default function OnboardingPage() {
     slug: '',
     aiModelPreference: 'openai/gpt-4o',
     aiSmartModel: 'anthropic/claude-sonnet-4-6',
-    aiFastModel: 'openai/gpt-4o-mini',
+    aiFastModel: 'openrouter/free',
     aiImageModel: 'openai/dall-e-3',
   });
   const [modelTab, setModelTab] = useState<'aiSmartModel' | 'aiModelPreference' | 'aiFastModel' | 'aiImageModel'>('aiSmartModel');
@@ -51,8 +51,8 @@ export default function OnboardingPage() {
   }, [clients, currentStep, activeClientId, setActiveClientId]);
   
   // Queries
-  const { data: availableApps, isLoading: isLoadingApps } = trpc.registry.listAvailableApps.useQuery();
-  const { data: installations, isLoading: isLoadingInst } = trpc.registry.listInstallations.useQuery();
+  const { data: availableApps, isLoading: isLoadingApps } = useAvailableApps();
+  const { data: installations, isLoading: isLoadingInst } = useInstallations();
 
   // Filter apps by category
   const gitApps = availableApps?.filter(app => app.type === 'feature:git') || [];
@@ -72,7 +72,7 @@ export default function OnboardingPage() {
     { id: 'SUMMARY', title: 'Finish', icon: CheckCircle2, isComplete: !!(hasCms && hasAnalytics) },
   ];
 
-  const createClientMutation = trpc.clients.create.useMutation({
+  const createClientMutation = useCreateClient({
     onSuccess: (newClient) => {
       utils.clients.list.invalidate();
       if (newClient) {
@@ -82,7 +82,7 @@ export default function OnboardingPage() {
     },
   });
 
-  const installMutation = trpc.registry.installApp.useMutation({
+  const installMutation = useInstallApp({
     onSuccess: (data) => {
       // Open connector config in a popup
       const width = 600;

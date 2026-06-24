@@ -1,6 +1,6 @@
 'use client';
 
-import { trpc } from '@/utils/trpc';
+import { useArticles } from '@deseo/api-client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@deseo/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@deseo/ui/table';
 import { Badge } from '@deseo/ui/badge';
@@ -16,7 +16,7 @@ const statusMap = {
 };
 
 export default function ArticlesPage() {
-  const { data: articles, isLoading } = trpc.article.list.useQuery({});
+  const { data: articles, isLoading } = useArticles();
 
   if (isLoading) {
     return (

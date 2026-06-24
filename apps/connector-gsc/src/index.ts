@@ -381,6 +381,135 @@ app.get('/api/feature/analytics/dashboard', sdk.authMiddleware(), async (req, re
   }
 });
 
+// 8. List submitted sitemaps for a site
+app.get('/api/feature/analytics/sitemaps', sdk.authMiddleware(), async (req, res) => {
+  const { userId } = (req as any).deseo;
+  const rawSiteUrl = req.query.siteUrl as string;
+  if (!rawSiteUrl) return res.status(400).json({ success: false, error: 'siteUrl is required' });
+
+  const siteUrl = toGscSiteUrl(rawSiteUrl);
+  const [tokenRecord] = await db.select().from(gscTokens).where(eq(gscTokens.deseoUserId, userId)).limit(1);
+  if (!tokenRecord) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+  try {
+    oauth2Client.setCredentials(tokenRecord.tokens as any);
+    const searchconsole = google.searchconsole({ version: 'v1', auth: oauth2Client });
+    const response = await searchconsole.sitemaps.list({ siteUrl });
+    res.json({ success: true, data: response.data.sitemap ?? [] });
+  } catch (error: any) {
+    const needsReauth = error.code === 403 || error.status === 403;
+    res.status(needsReauth ? 403 : 500).json({
+      success: false,
+      error: needsReauth ? 'Insufficient permissions — please reconnect GSC with updated scopes.' : error.message,
+    });
+  }
+});
+
+// 9. Submit (or resubmit) a sitemap for a site
+app.post('/api/feature/analytics/sitemaps/submit', sdk.authMiddleware(), async (req, res) => {
+  const { userId } = (req as any).deseo;
+  const { siteUrl: rawSiteUrl, feedpath } = req.body as { siteUrl: string; feedpath: string };
+
+  if (!rawSiteUrl || !feedpath) {
+    return res.status(400).json({ success: false, error: 'siteUrl and feedpath are required' });
+  }
+
+  const siteUrl = toGscSiteUrl(rawSiteUrl);
+  const [tokenRecord] = await db.select().from(gscTokens).where(eq(gscTokens.deseoUserId, userId)).limit(1);
+  if (!tokenRecord) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+  try {
+    oauth2Client.setCredentials(tokenRecord.tokens as any);
+    const searchconsole = google.searchconsole({ version: 'v1', auth: oauth2Client });
+    await searchconsole.sitemaps.submit({ siteUrl, feedpath });
+    res.json({ success: true, data: { siteUrl: normalizeGscDomain(siteUrl), feedpath } });
+  } catch (error: any) {
+    const needsReauth = error.code === 403 || error.status === 403;
+    res.status(needsReauth ? 403 : 500).json({
+      success: false,
+      error: needsReauth ? 'Insufficient permissions — please reconnect GSC with updated scopes.' : error.message,
+    });
+  }
+});
+
+// 10. Get a site verification token (HTML meta tag method)
+app.post('/api/feature/verify/token', sdk.authMiddleware(), async (req, res) => {
+  const { userId } = (req as any).deseo;
+  const { siteUrl } = req.body as { siteUrl: string };
+
+  if (!siteUrl) return res.status(400).json({ success: false, error: 'siteUrl is required' });
+
+  const [tokenRecord] = await db.select().from(gscTokens).where(eq(gscTokens.deseoUserId, userId)).limit(1);
+  if (!tokenRecord) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+  try {
+    oauth2Client.setCredentials(tokenRecord.tokens as any);
+    const siteVerification = google.siteVerification({ version: 'v1', auth: oauth2Client });
+
+    const response = await siteVerification.webResource.getToken({
+      requestBody: {
+        site: { type: 'SITE', identifier: siteUrl },
+        verificationMethod: 'META',
+      },
+    });
+
+    const verificationToken = response.data.token;
+    const metaTag = `<meta name="google-site-verification" content="${verificationToken}" />`;
+
+    res.json({ success: true, data: { token: verificationToken, metaTag } });
+  } catch (error: any) {
+    const needsReauth = error.code === 403 || error.status === 403;
+    res.status(needsReauth ? 403 : 500).json({
+      success: false,
+      error: needsReauth ? 'Insufficient permissions — please reconnect GSC with updated scopes.' : error.message,
+    });
+  }
+});
+
+// 11. Trigger site verification after the meta tag has been deployed
+app.post('/api/feature/verify/confirm', sdk.authMiddleware(), async (req, res) => {
+  const { userId } = (req as any).deseo;
+  const { siteUrl } = req.body as { siteUrl: string };
+
+  if (!siteUrl) return res.status(400).json({ success: false, error: 'siteUrl is required' });
+
+  const [tokenRecord] = await db.select().from(gscTokens).where(eq(gscTokens.deseoUserId, userId)).limit(1);
+  if (!tokenRecord) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+  try {
+    oauth2Client.setCredentials(tokenRecord.tokens as any);
+    const siteVerification = google.siteVerification({ version: 'v1', auth: oauth2Client });
+
+    const response = await siteVerification.webResource.verify({
+      verificationMethod: 'META',
+      requestBody: {
+        site: { type: 'SITE', identifier: siteUrl },
+        verificationMethod: 'META',
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        verified: true,
+        id: response.data.id,
+        site: response.data.site,
+      },
+    });
+  } catch (error: any) {
+    const isVerificationFailed = error.code === 400 || error.status === 400;
+    const needsReauth = error.code === 403 || error.status === 403;
+    res.status(error.code ?? 500).json({
+      success: false,
+      error: isVerificationFailed
+        ? 'Verification failed — ensure the meta tag is deployed and publicly accessible.'
+        : needsReauth
+          ? 'Insufficient permissions — please reconnect GSC with updated scopes.'
+          : error.message,
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🔌 GSC Connector listening on http://localhost:${PORT}`);
 });

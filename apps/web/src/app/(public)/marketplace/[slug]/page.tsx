@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { trpc } from '@/utils/trpc';
+import { useAppBySlug } from '@deseo/api-client';
 import { Button } from '@deseo/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@deseo/ui/card';
 import { Badge } from '@deseo/ui/badge';
@@ -18,10 +18,7 @@ export default function PublicMarketplaceDetailPage() {
   const params = useParams();
   const slug = typeof params.slug === 'string' ? params.slug : '';
   
-  const { data: app, isLoading, error } = trpc.registry.getAppBySlug.useQuery(
-    { slug },
-    { enabled: !!slug }
-  );
+  const { data: app, isLoading, error } = useAppBySlug(slug, { enabled: !!slug });
 
   if (isLoading) {
     return (

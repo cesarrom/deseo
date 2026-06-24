@@ -1,6 +1,13 @@
 'use client';
 
-import { trpc } from '@/utils/trpc';
+import {
+  trpc,
+  useProducts,
+  useArticles,
+  useJobs,
+  useSuggestions,
+  useConvertDiscovery,
+} from '@deseo/api-client';
 import { useSession } from 'next-auth/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@deseo/ui/card';
 import { FileText, Activity, Sparkles, Loader2, ArrowRight, Globe, Package, Plus } from 'lucide-react';
@@ -14,17 +21,13 @@ export default function DashboardPage() {
   const { activeClientId, clients } = useClient();
   const activeClient = clients.find(c => c.id === activeClientId);
 
-  const { data: products, isLoading: productsLoading } = trpc.products.list.useQuery(
-    undefined, 
-    { enabled: !!activeClientId }
-  );
-
-  const { data: articles } = trpc.article.list.useQuery({}, { enabled: !!session?.user?.id });
-  const { data: jobs } = trpc.job.list.useQuery({}, { enabled: !!session?.user?.id });
-  const { data: suggestions } = trpc.intelligence.listSuggestions.useQuery({}, { enabled: !!activeClientId });
+  const { data: products, isLoading: productsLoading } = useProducts({ enabled: !!activeClientId });
+  const { data: articles } = useArticles({}, { enabled: !!session?.user?.id });
+  const { data: jobs } = useJobs({}, { enabled: !!session?.user?.id });
+  const { data: suggestions } = useSuggestions({}, { enabled: !!activeClientId });
 
   const utils = trpc.useUtils();
-  const convertMutation = trpc.intelligence.convertDiscovery.useMutation({
+  const convertMutation = useConvertDiscovery({
     onSuccess: () => {
       utils.products.list.invalidate();
       utils.intelligence.listSuggestions.invalidate();

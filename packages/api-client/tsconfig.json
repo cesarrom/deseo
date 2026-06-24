@@ -1,0 +1,11 @@
+{
+  "extends": "@deseo/config/typescript.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "jsx": "react",
+    "noEmit": true,
+    "isolatedModules": true,
+    "moduleResolution": "bundler"
+  },
+  "include": ["src/**/*"]
+}

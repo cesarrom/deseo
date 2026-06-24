@@ -1,0 +1,1 @@
+ALTER TABLE "clients" ALTER COLUMN "ai_fast_model" SET DEFAULT 'openrouter/free';

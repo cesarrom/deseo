@@ -1,6 +1,6 @@
 'use client';
 
-import { trpc } from '@/utils/trpc';
+import { trpc, useClients, useCreateClient, useUpdateClient } from '@deseo/api-client';
 import { Button } from '@deseo/ui/button';
 import { Input } from '@deseo/ui/input';
 import { Label } from '@deseo/ui/label';
@@ -31,7 +31,7 @@ const MODEL_ROLES = [
     key: 'aiFastModel' as const,
     label: 'Planner',
     description: 'Handles quick structured tasks like visual planning. A fast, cheap model works well here.',
-    defaultModel: 'openai/gpt-4o-mini',
+    defaultModel: 'openrouter/free',
     imageOnly: false,
   },
   {
@@ -63,11 +63,11 @@ function ModelConfigDialog({
   const [models, setModels] = useState<ModelConfig>({
     aiSmartModel: client.aiSmartModel ?? 'anthropic/claude-sonnet-4-6',
     aiModelPreference: client.aiModelPreference ?? 'openai/gpt-4o',
-    aiFastModel: client.aiFastModel ?? 'openai/gpt-4o-mini',
+    aiFastModel: client.aiFastModel ?? 'openrouter/free',
     aiImageModel: client.aiImageModel ?? 'openai/dall-e-3',
   });
 
-  const updateMutation = trpc.clients.update.useMutation({
+  const updateMutation = useUpdateClient({
     onSuccess: () => {
       utils.clients.list.invalidate();
       onClose();
@@ -130,9 +130,9 @@ export default function ClientsPage() {
   const [managingClient, setManagingClient] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
-  const { data: clients, isLoading } = trpc.clients.list.useQuery({});
+  const { data: clients, isLoading } = useClients();
 
-  const createMutation = trpc.clients.create.useMutation({
+  const createMutation = useCreateClient({
     onSuccess: () => {
       utils.clients.list.invalidate();
       setName('');

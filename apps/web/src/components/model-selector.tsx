@@ -1,6 +1,6 @@
 'use client';
 
-import { trpc } from '@/utils/trpc';
+import { useModels } from '@deseo/api-client';
 import { Card, CardContent } from '@deseo/ui/card';
 import { Badge } from '@deseo/ui/badge';
 import { Loader2, Search, Cpu } from 'lucide-react';
@@ -15,7 +15,7 @@ interface ModelSelectorProps {
 }
 
 export function ModelSelector({ value, onChange, imageOnly = false }: ModelSelectorProps) {
-  const { data: models, isLoading } = trpc.intelligence.listModels.useQuery();
+  const { data: models, isLoading } = useModels();
   const [search, setSearch] = useState('');
 
   if (isLoading) {

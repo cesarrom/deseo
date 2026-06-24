@@ -1,6 +1,6 @@
 'use client';
 
-import { trpc } from '@/utils/trpc';
+import { useInstallations, useExecuteAction, useGenerateAndPublish } from '@deseo/api-client';
 import { Button } from '@deseo/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@deseo/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@deseo/ui/table';
@@ -12,13 +12,12 @@ export default function IntelligencePage() {
   const [siteUrl, setSiteUrl] = useState('');
   
   // Fetch installations
-  const { data: installations } = trpc.registry.listInstallations.useQuery();
+  const { data: installations } = useInstallations();
   const gscInstalled = installations?.find(i => i.app.slug === 'gsc');
   const cmsInstallation = installations?.find(i => i.app.type === 'feature:cms');
 
-  // Mutations
-  const performanceQuery = trpc.registry.executeAction.useMutation();
-  const createMutation = trpc.registry.generateAndPublish.useMutation({
+  const performanceQuery = useExecuteAction();
+  const createMutation = useGenerateAndPublish({
     onSuccess: (data) => {
       alert(`Article generation started! Workflow ID: ${data.workflowId}`);
     },

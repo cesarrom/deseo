@@ -1,9 +1,9 @@
 'use client';
 
-import { trpc } from '@/utils/trpc';
+import { useArticles } from '@deseo/api-client';
 
 export default function TestTRPCPage() {
-  const hello = trpc.article.list.useQuery({});
+  const hello = useArticles();
 
   return (
     <div className="p-8">

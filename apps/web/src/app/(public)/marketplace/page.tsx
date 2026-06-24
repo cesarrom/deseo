@@ -1,6 +1,6 @@
 'use client';
 
-import { trpc } from '@/utils/trpc';
+import { useAvailableApps } from '@deseo/api-client';
 import { Button } from '@deseo/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@deseo/ui/card';
 import { Badge } from '@deseo/ui/badge';
@@ -14,7 +14,7 @@ const iconMap = {
 };
 
 export default function PublicMarketplacePage() {
-  const { data: apps, isLoading } = trpc.registry.listAvailableApps.useQuery();
+  const { data: apps, isLoading } = useAvailableApps();
 
   if (isLoading) {
     return (

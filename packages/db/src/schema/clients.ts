@@ -13,7 +13,7 @@ export const clients = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     aiModelPreference: text('ai_model_preference').default('openai/gpt-4o'),
     aiSmartModel: text('ai_smart_model').default('anthropic/claude-sonnet-4-6'),
-    aiFastModel: text('ai_fast_model').default('openai/gpt-4o-mini'),
+    aiFastModel: text('ai_fast_model').default('openrouter/free'),
     aiImageModel: text('ai_image_model').default('openai/dall-e-3'),
     customData: jsonb('custom_data'),
     createdAt: timestamp('created_at').defaultNow().notNull(),

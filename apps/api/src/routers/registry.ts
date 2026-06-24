@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, publicProcedure, protectedProcedure } from '../trpc';
-import { apps, installations, authGrants } from '@deseo/db';
-import { eq, and, sql } from 'drizzle-orm';
+import { apps, installations, authGrants, products, performanceMetrics, withRLS } from '@deseo/db';
+import { eq, and, sql, gte, lte, isNull } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import crypto from 'crypto';
 import axios from 'axios';
@@ -559,6 +559,99 @@ export const registryRouter = router({
           message: `Connector error: ${error.response?.data?.error || error.message}`,
         });
       }
+    }),
+
+  // User: Pull fresh GSC performance data into the core DB right now
+  refreshAnalyticsData: protectedProcedure
+    .input(z.object({ appSlug: z.string(), siteUrl: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const installation = await ctx.withDB(async (tx) => {
+        const [inst] = await tx
+          .select({
+            baseUrl: apps.baseUrl,
+            appClientId: apps.clientId,
+            clientSecret: apps.clientSecret,
+            clientIdInInstallation: installations.clientId,
+          })
+          .from(installations)
+          .innerJoin(apps, eq(installations.appId, apps.id))
+          .where(and(eq(apps.slug, input.appSlug), eq(installations.userId, ctx.user.id)))
+          .limit(1);
+        return inst;
+      });
+
+      if (!installation) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'App not installed' });
+      }
+
+      const product = await ctx.withDB(async (tx) => {
+        const [p] = await tx
+          .select()
+          .from(products)
+          .where(and(eq(products.clientId, installation.clientIdInInstallation!), eq(products.domain, input.siteUrl)))
+          .limit(1);
+        return p;
+      });
+
+      if (!product) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'No product found for this site' });
+      }
+
+      const token = jwt.sign(
+        { userId: ctx.user.id, clientId: installation.appClientId },
+        installation.clientSecret,
+        { expiresIn: '10m' }
+      );
+
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 30);
+      const startDateStr = startDate.toISOString().split('T')[0]!;
+      const endDateStr = endDate.toISOString().split('T')[0]!;
+
+      const cleanBase = installation.baseUrl.endsWith('/') ? installation.baseUrl : `${installation.baseUrl}/`;
+      const response = await axios.post(
+        `${cleanBase}api/feature/analytics/sync`,
+        { siteUrl: input.siteUrl, startDate: startDateStr, endDate: endDateStr },
+        { headers: { 'x-deseo-token': token }, timeout: 30_000 }
+      );
+
+      const keywords: Array<{
+        query: string; date: string; clicks: number;
+        impressions: number; position: number; ctr: number;
+      }> = response.data?.data || [];
+
+      if (keywords.length > 0) {
+        await withRLS({ userId: ctx.user.id, activeClientId: ctx.activeClientId ?? undefined, isInternal: false }, async (tx) => {
+          await tx
+            .delete(performanceMetrics)
+            .where(
+              and(
+                eq(performanceMetrics.clientId, installation.clientIdInInstallation!),
+                eq(performanceMetrics.productId, product.id),
+                isNull(performanceMetrics.articleId),
+                gte(performanceMetrics.date, startDate),
+                lte(performanceMetrics.date, endDate)
+              )
+            );
+
+          await tx.insert(performanceMetrics).values(
+            keywords.map((k) => ({
+              clientId: installation.clientIdInInstallation!,
+              productId: product.id,
+              keyword: k.query,
+              date: new Date(k.date),
+              clicks: k.clicks,
+              impressions: k.impressions,
+              position: k.position,
+              ctr: k.ctr,
+              source: 'gsc' as const,
+            }))
+          );
+        });
+      }
+
+      return { synced: keywords.length, siteUrl: input.siteUrl };
     }),
 
   // User: Trigger an automated SEO audit and PR for a connector

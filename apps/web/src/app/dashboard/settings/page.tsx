@@ -1,6 +1,6 @@
 'use client';
 
-import { trpc } from '@/utils/trpc';
+import { trpc, useInstallations, useUpdateClient, useSyncInstallation, useOptimizeSite } from '@deseo/api-client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@deseo/ui/card';
 import { Badge } from '@deseo/ui/badge';
 import { Button } from '@deseo/ui/button';
@@ -19,7 +19,7 @@ export default function SettingsPage() {
   const { activeClientId, clients } = useClient();
   const activeClient = clients.find(c => c.id === activeClientId);
   
-  const { data: installations, isLoading } = trpc.registry.listInstallations.useQuery();
+  const { data: installations, isLoading } = useInstallations();
   const utils = trpc.useUtils();
 
   const [selectedModel, setSelectedModel] = useState(activeClient?.aiModelPreference || 'openai/gpt-4o');
@@ -30,14 +30,14 @@ export default function SettingsPage() {
     }
   }, [activeClient]);
 
-  const updateClientMutation = trpc.clients.update.useMutation({
+  const updateClientMutation = useUpdateClient({
     onSuccess: () => {
       utils.clients.list.invalidate();
       alert('Client settings updated successfully!');
     }
   });
 
-  const syncMutation = trpc.registry.syncInstallation.useMutation({
+  const syncMutation = useSyncInstallation({
     onSuccess: () => {
       alert('Sync process started! Check the dashboard in a few minutes.');
     },
@@ -46,7 +46,7 @@ export default function SettingsPage() {
     }
   });
 
-  const optimizeMutation = trpc.registry.optimizeSite.useMutation({
+  const optimizeMutation = useOptimizeSite({
     onSuccess: (data) => {
       alert(`SEO Workflow started! Workflow ID: ${data.workflowId}`);
     },

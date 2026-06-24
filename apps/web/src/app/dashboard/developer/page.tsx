@@ -1,7 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { trpc } from '@/utils/trpc';
+import {
+  useApiKeys,
+  useCreateApiKey,
+  useDeleteApiKey,
+  useUserApps,
+  useRegisterApp,
+  useUpdateApp,
+  useTogglePublishApp,
+  useDeleteApp,
+} from '@deseo/api-client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@deseo/ui/card';
 import { Button } from '@deseo/ui/button';
 import { Input } from '@deseo/ui/input';
@@ -34,15 +43,15 @@ export default function DeveloperPage() {
   const [editingAppId, setEditingAppId] = useState<string | null>(null);
 
   // API Key Queries/Mutations
-  const { data: apiKeys, refetch: refetchKeys } = trpc.auth.listApiKeys.useQuery();
-  const createKeyMutation = trpc.auth.createApiKey.useMutation({
+  const { data: apiKeys, refetch: refetchKeys } = useApiKeys();
+  const createKeyMutation = useCreateApiKey({
     onSuccess: (data) => {
       setCreatedKey(data.key);
       setNewKeyName('');
       refetchKeys();
     }
   });
-  const deleteKeyMutation = trpc.auth.deleteApiKey.useMutation({
+  const deleteKeyMutation = useDeleteApiKey({
     onSuccess: () => refetchKeys()
   });
 
@@ -60,25 +69,25 @@ export default function DeveloperPage() {
   const [newApp, setNewApp] = useState(defaultApp);
 
   // Connector Queries/Mutations
-  const { data: myApps, refetch: refetchApps, isLoading: isLoadingApps } = trpc.registry.listUserApps.useQuery();
-  const registerAppMutation = trpc.registry.registerApp.useMutation({
+  const { data: myApps, refetch: refetchApps, isLoading: isLoadingApps } = useUserApps();
+  const registerAppMutation = useRegisterApp({
     onSuccess: (data) => {
       setCreatedApp({ clientId: data.clientId, clientSecret: data.clientSecret });
       refetchApps();
       setNewApp(defaultApp);
     }
   });
-  const updateAppMutation = trpc.registry.updateApp.useMutation({
+  const updateAppMutation = useUpdateApp({
     onSuccess: () => {
       refetchApps();
       setNewApp(defaultApp);
       setEditingAppId(null);
     }
   });
-  const togglePublishMutation = trpc.registry.togglePublishApp.useMutation({
+  const togglePublishMutation = useTogglePublishApp({
     onSuccess: () => refetchApps()
   });
-  const deleteAppMutation = trpc.registry.deleteApp.useMutation({
+  const deleteAppMutation = useDeleteApp({
     onSuccess: () => refetchApps()
   });
 

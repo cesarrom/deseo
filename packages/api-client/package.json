@@ -1,0 +1,32 @@
+{
+  "name": "@deseo/api-client",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react.ts",
+    "./links": "./src/links.ts"
+  },
+  "dependencies": {
+    "@deseo/api": "workspace:*",
+    "superjson": "^2.2.6"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "@trpc/client": "^11.0.0",
+    "@trpc/react-query": "^11.0.0",
+    "react": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@deseo/config": "workspace:*",
+    "@trpc/client": "^11.0.0",
+    "@trpc/react-query": "^11.0.0",
+    "@tanstack/react-query": "^5.62.11",
+    "@types/react": "^18.0.0",
+    "react": "^18.0.0",
+    "typescript": "^5.7.3"
+  }
+}

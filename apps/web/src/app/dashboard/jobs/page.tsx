@@ -1,6 +1,6 @@
 'use client';
 
-import { trpc } from '@/utils/trpc';
+import { useJobs } from '@deseo/api-client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@deseo/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@deseo/ui/table';
 import { Badge } from '@deseo/ui/badge';
@@ -20,7 +20,7 @@ const typeMap = {
 };
 
 export default function JobsPage() {
-  const { data: jobs, isLoading } = trpc.job.list.useQuery({});
+  const { data: jobs, isLoading } = useJobs();
 
   if (isLoading) {
     return (
