@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useInstallations, useAnalyticsDashboard, useProducts } from '@deseo/api-client';
+import {
+  useInstallations, useAnalyticsDashboard, useProducts, useRefreshAnalyticsData,
+} from '@deseo/api-client';
 import { useClient } from '../../providers/ClientProvider';
 import { colors, spacing, radius, typography } from '../../theme';
 import { Card } from '../../components/ui/Card';
@@ -13,11 +15,13 @@ const RANGES = ['7d', '30d', '90d'];
 
 export function MetricsScreen() {
   const [range, setRange] = useState('7d');
+  const [statusMsg, setStatusMsg] = useState<{ text: string; isError: boolean } | null>(null);
   const { activeClientId } = useClient();
   const enabled = !!activeClientId;
 
   const { data: installations } = useInstallations({ enabled });
   const { data: products } = useProducts({ enabled });
+  const refreshAnalytics = useRefreshAnalyticsData();
 
   // Use the first product's siteUrl if available for GSC analytics
   const gscInstall = installations?.find((i) => i.app.slug === 'gsc' && i.status === 'active');
@@ -32,13 +36,58 @@ export function MetricsScreen() {
   const hasAnalytics = !!analytics && !analyticsLoading;
   const gscConnected = !!gscInstall;
 
+  const handleRefresh = () => {
+    refreshAnalytics.mutate(
+      { appSlug: 'gsc', siteUrl: products?.[0]?.domain ?? '' },
+      {
+        onSuccess: () => {
+          setStatusMsg({ text: 'Analytics refreshed!', isError: false });
+          setTimeout(() => setStatusMsg(null), 3000);
+        },
+        onError: () => {
+          setStatusMsg({ text: 'Failed to refresh analytics.', isError: true });
+          setTimeout(() => setStatusMsg(null), 3000);
+        },
+      },
+    );
+  };
+
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.safe}>
         <View style={styles.header}>
-          <Text style={styles.headerLabel}>ANALYTICS</Text>
-          <Text style={styles.headerTitle}>Metrics</Text>
+          <View>
+            <Text style={styles.headerLabel}>ANALYTICS</Text>
+            <Text style={styles.headerTitle}>Metrics</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.refreshBtn, refreshAnalytics.isPending && styles.refreshBtnDim]}
+            onPress={handleRefresh}
+            disabled={refreshAnalytics.isPending}
+            activeOpacity={0.7}
+          >
+            {refreshAnalytics.isPending ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Text style={styles.refreshIcon}>↻</Text>
+            )}
+          </TouchableOpacity>
         </View>
+
+        {statusMsg && (
+          <View style={[
+            styles.statusBanner,
+            { backgroundColor: statusMsg.isError ? colors.errorDim : colors.accentDim },
+          ]}>
+            <Text style={[
+              styles.statusText,
+              { color: statusMsg.isError ? colors.error : colors.accent },
+            ]}>
+              {statusMsg.text}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.rangeRow}>
           {RANGES.map((r) => (
             <TouchableOpacity
@@ -72,10 +121,10 @@ export function MetricsScreen() {
           <>
             <View style={styles.metricsGrid}>
               {[
-                { label: 'Impressions', value: (analytics as any)?.impressions ?? '—' },
-                { label: 'Clicks', value: (analytics as any)?.clicks ?? '—' },
-                { label: 'Avg. CTR', value: (analytics as any)?.ctr ? `${((analytics as any).ctr * 100).toFixed(1)}%` : '—' },
-                { label: 'Avg. Position', value: (analytics as any)?.position?.toFixed(1) ?? '—' },
+                { label: 'Impressions', value: (analytics as Record<string, unknown>)?.impressions ?? '—' },
+                { label: 'Clicks', value: (analytics as Record<string, unknown>)?.clicks ?? '—' },
+                { label: 'Avg. CTR', value: (analytics as Record<string, unknown>)?.ctr ? `${(((analytics as Record<string, unknown>).ctr as number) * 100).toFixed(1)}%` : '—' },
+                { label: 'Avg. Position', value: ((analytics as Record<string, unknown>)?.position as number)?.toFixed(1) ?? '—' },
               ].map((m) => (
                 <Card key={m.label} style={styles.metricCard}>
                   <Text style={styles.metricValue}>{String(m.value)}</Text>
@@ -133,9 +182,35 @@ export function MetricsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   safe: { backgroundColor: colors.bg },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
   headerLabel: { ...typography.tiny, color: colors.primary, letterSpacing: 1, marginBottom: 4 },
   headerTitle: { fontSize: 28, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
+  refreshBtn: {
+    width: 40, height: 40,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  refreshBtnDim: { opacity: 0.5 },
+  refreshIcon: { fontSize: 20, color: colors.primary, fontWeight: '700' },
+  statusBanner: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    borderRadius: radius.md,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  statusText: { ...typography.smallMedium, textAlign: 'center' },
   rangeRow: { flexDirection: 'row', paddingHorizontal: spacing.lg, gap: 8, marginBottom: spacing.sm },
   rangeChip: {
     paddingHorizontal: 16, paddingVertical: 7,

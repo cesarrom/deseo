@@ -1,74 +1,46 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useInstallations } from '@deseo/api-client';
 import { OnboardingStackParamList } from '../../navigation/types';
 import { colors, spacing, radius, typography } from '../../theme';
 import { Badge } from '../../components/ui/Badge';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = {
   navigation: NativeStackNavigationProp<OnboardingStackParamList, 'Connectors'>;
   route: RouteProp<OnboardingStackParamList, 'Connectors'>;
 };
 
-const CONNECTORS = [
-  {
-    id: 'gsc',
-    name: 'Google Search Console',
-    desc: 'Import keyword data and track organic performance',
-    icon: '◎',
-    color: '#ea4335',
-    badge: 'Recommended' as const,
-  },
-  {
-    id: 'github',
-    name: 'GitHub',
-    desc: 'Auto-create PRs with SEO improvements for your codebase',
-    icon: '⬡',
-    color: '#a78bfa',
-    badge: null,
-  },
-  {
-    id: 'wordpress',
-    name: 'WordPress',
-    desc: 'Publish posts directly to your WordPress blog',
-    icon: '◈',
-    color: '#21759b',
-    badge: null,
-  },
-  {
-    id: 'strapi',
-    name: 'Strapi',
-    desc: 'Push content to any Strapi CMS instance',
-    icon: '✦',
-    color: '#4945ff',
-    badge: null,
-  },
-  {
-    id: 'payload',
-    name: 'Payload CMS',
-    desc: 'Manage dedicated Payload instances per client',
-    icon: '⬙',
-    color: '#0ea5e9',
-    badge: null,
-  },
-];
+const CONNECTOR_ICONS: Record<string, string> = {
+  gsc: '◎',
+  github: '⬡',
+  wordpress: '◈',
+  strapi: '✦',
+  payload: '⬙',
+  gitlab: '◆',
+};
+
+const CONNECTOR_COLORS: Record<string, string> = {
+  gsc: '#ea4335',
+  github: '#a78bfa',
+  wordpress: '#21759b',
+  strapi: '#4945ff',
+  payload: '#0ea5e9',
+  gitlab: '#fc6d26',
+};
 
 export function ConnectorsScreen({ navigation, route }: Props) {
-  const { clientName } = route.params;
-  const [enabled, setEnabled] = useState<Record<string, boolean>>({ gsc: true });
+  const { clientId, clientName } = route.params;
+  const { data: installations } = useInstallations();
 
   const handleFinish = async () => {
     await AsyncStorage.setItem('onboarding_complete', 'true');
-    await AsyncStorage.setItem('current_client', JSON.stringify({
-      id: 'client_1',
-      name: clientName,
-      connectors: Object.keys(enabled).filter(k => enabled[k]),
-    }));
+    await AsyncStorage.setItem('active_client_id', clientId);
     navigation.getParent()?.reset({ index: 0, routes: [{ name: 'Main' as never }] });
   };
 
@@ -87,30 +59,50 @@ export function ConnectorsScreen({ navigation, route }: Props) {
           </View>
 
           <Text style={styles.title}>Connect your{'\n'}channels</Text>
-          <Text style={styles.subtitle}>Enable the platforms you use. You can always add more later.</Text>
+          <Text style={styles.subtitle}>
+            Welcome, {clientName}! Here are your currently connected integrations.
+          </Text>
 
-          <View style={styles.list}>
-            {CONNECTORS.map((c) => (
-              <View key={c.id} style={styles.row}>
-                <View style={[styles.icon, { backgroundColor: c.color + '20' }]}>
-                  <Text style={[styles.iconText, { color: c.color }]}>{c.icon}</Text>
-                </View>
-                <View style={styles.info}>
-                  <View style={styles.nameRow}>
-                    <Text style={styles.connectorName}>{c.name}</Text>
-                    {c.badge && <Badge label={c.badge} variant="accent" />}
-                  </View>
-                  <Text style={styles.connectorDesc}>{c.desc}</Text>
-                </View>
-                <Switch
-                  value={!!enabled[c.id]}
-                  onValueChange={(val) => setEnabled(prev => ({ ...prev, [c.id]: val }))}
-                  trackColor={{ false: colors.border, true: colors.primaryDim }}
-                  thumbColor={enabled[c.id] ? colors.primary : colors.textMuted}
-                />
-              </View>
-            ))}
+          <View style={styles.noteCard}>
+            <Text style={styles.noteText}>
+              Connect integrations from Settings after onboarding
+            </Text>
           </View>
+
+          {installations && installations.length > 0 ? (
+            <View style={styles.list}>
+              {installations.map((inst) => {
+                const slug = inst.app.slug;
+                const icon = CONNECTOR_ICONS[slug] ?? '◎';
+                const color = CONNECTOR_COLORS[slug] ?? colors.primary;
+                const isInstalled = inst.status === 'active';
+
+                return (
+                  <View key={inst.id} style={styles.row}>
+                    <View style={[styles.icon, { backgroundColor: color + '20' }]}>
+                      <Text style={[styles.iconText, { color }]}>{icon}</Text>
+                    </View>
+                    <View style={styles.info}>
+                      <View style={styles.nameRow}>
+                        <Text style={styles.connectorName}>{inst.app.name}</Text>
+                        {isInstalled && <Badge label="Connected" variant="accent" />}
+                      </View>
+                      <Text style={styles.connectorDesc}>
+                        {(inst.app as { description?: string }).description ?? `${inst.app.name} integration`}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={styles.emptyConnectors}>
+              <Text style={styles.emptyTitle}>No integrations yet</Text>
+              <Text style={styles.emptySubtext}>
+                You can connect integrations from Settings after completing onboarding.
+              </Text>
+            </View>
+          )}
         </ScrollView>
 
         <View style={styles.footer}>
@@ -154,8 +146,17 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...typography.body, color: colors.textSecondary,
-    lineHeight: 22, marginBottom: spacing.xl,
+    lineHeight: 22, marginBottom: spacing.md,
   },
+  noteCard: {
+    backgroundColor: colors.primaryDim,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+    padding: 12,
+    marginBottom: spacing.xl,
+  },
+  noteText: { ...typography.small, color: colors.primary, textAlign: 'center' },
   list: { gap: 2 },
   row: {
     flexDirection: 'row',
@@ -178,6 +179,16 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
   connectorName: { ...typography.bodyMedium, color: colors.text },
   connectorDesc: { ...typography.small, color: colors.textMuted, lineHeight: 17 },
+  emptyConnectors: {
+    alignItems: 'center',
+    padding: spacing.xl,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyTitle: { ...typography.bodyMedium, color: colors.text, marginBottom: 8 },
+  emptySubtext: { ...typography.small, color: colors.textMuted, textAlign: 'center', lineHeight: 18 },
   footer: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,

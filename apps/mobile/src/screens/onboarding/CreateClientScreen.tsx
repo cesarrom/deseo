@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useCreateClient } from '@deseo/api-client';
 import { OnboardingStackParamList } from '../../navigation/types';
 import { colors, spacing, radius, typography } from '../../theme';
 import { Button } from '../../components/ui/Button';
@@ -26,8 +27,32 @@ export function CreateClientScreen({ navigation }: Props) {
   const [businessName, setBusinessName] = useState('');
   const [website, setWebsite] = useState('');
   const [selectedType, setSelectedType] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const createClient = useCreateClient();
 
   const canContinue = businessName.trim().length > 1 && selectedType;
+
+  const handleContinue = () => {
+    setErrorMsg('');
+    createClient.mutate(
+      {
+        name: businessName.trim(),
+        slug: businessName.trim().toLowerCase().replace(/\s+/g, '-'),
+      },
+      {
+        onSuccess: (result) => {
+          navigation.navigate('Connectors', {
+            clientId: result.id,
+            clientName: result.name,
+          });
+        },
+        onError: (err) => {
+          setErrorMsg(err.message ?? 'Failed to create client. Please try again.');
+        },
+      },
+    );
+  };
 
   return (
     <KeyboardAvoidingView
@@ -92,16 +117,20 @@ export function CreateClientScreen({ navigation }: Props) {
               ))}
             </View>
           </View>
+
+          {errorMsg ? (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          ) : null}
         </ScrollView>
 
         <View style={styles.footer}>
           <Button
             label="Continue"
-            onPress={() => navigation.navigate('Connectors', {
-              clientId: 'new',
-              clientName: businessName.trim(),
-            })}
+            onPress={handleContinue}
             disabled={!canContinue}
+            loading={createClient.isPending}
             size="lg"
             style={styles.ctaButton}
           />
@@ -194,6 +223,15 @@ const styles = StyleSheet.create({
   typeIcon: { fontSize: 18 },
   typeLabel: { ...typography.bodyMedium, color: colors.textSecondary },
   typeLabelActive: { color: colors.primary },
+  errorBanner: {
+    backgroundColor: colors.errorDim,
+    borderRadius: radius.md,
+    padding: 12,
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.error + '40',
+  },
+  errorText: { ...typography.small, color: colors.error },
   footer: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,

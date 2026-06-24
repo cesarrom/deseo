@@ -10,6 +10,7 @@ async function register() {
         type: 'feature:git',
         baseUrl: 'http://localhost:3002',
         configUrl: '/ui/configure',
+        settingsUrl: '/ui/settings',
         isInternal: true
       }
     });

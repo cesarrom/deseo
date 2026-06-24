@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   ScrollView, KeyboardAvoidingView, Platform, Animated,
@@ -6,15 +6,25 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useProducts, useDiscoverTrendingKeywords } from '@deseo/api-client';
+import { useClient } from '../../providers/ClientProvider';
 import { CreateStackParamList } from '../../navigation/types';
 import { colors, spacing, radius, typography } from '../../theme';
-import { LinearGradient } from 'expo-linear-gradient';
 
 type Props = {
   navigation: NativeStackNavigationProp<CreateStackParamList, 'Create'>;
 };
 
-const HOT_TOPICS = [
+type TrendingKeyword = {
+  keyword: string;
+  trendSignal?: string;
+  suggestedTitle?: string;
+  difficulty?: string;
+  searchIntent?: string;
+};
+
+const FALLBACK_TOPICS = [
   { id: '1', label: 'AI tools for developers', trend: '↑ 84%' },
   { id: '2', label: 'TypeScript best practices', trend: '↑ 52%' },
   { id: '3', label: 'React performance tips', trend: '↑ 41%' },
@@ -38,6 +48,26 @@ export function CreateScreen({ navigation }: Props) {
   const inputRef = useRef<TextInput>(null);
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
+  const { activeClientId } = useClient();
+  const { data: products } = useProducts({ enabled: !!activeClientId });
+  const discoverKeywords = useDiscoverTrendingKeywords();
+
+  const firstProduct = products?.[0];
+
+  // Load trending keywords when a product is available
+  useEffect(() => {
+    if (firstProduct?.id && discoverKeywords.status === 'idle') {
+      discoverKeywords.mutate({ productId: firstProduct.id });
+    }
+  }, [firstProduct?.id]);
+
+  const rawData = discoverKeywords.data as { keywords?: TrendingKeyword[] } | TrendingKeyword[] | null | undefined;
+  const trendingKeywords: TrendingKeyword[] = Array.isArray(rawData)
+    ? rawData
+    : (rawData as { keywords?: TrendingKeyword[] })?.keywords ?? [];
+
+  const useFallback = trendingKeywords.length === 0;
+
   const handleTopicPress = (topic: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setPrompt(`Write about ${topic}`);
@@ -56,7 +86,17 @@ export function CreateScreen({ navigation }: Props) {
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate('Ideas', { prompt: prompt.trim() });
+    navigation.navigate('Ideas', {
+      prompt: prompt.trim(),
+      productId: firstProduct?.id,
+    });
+  };
+
+  const difficultyLabel = (difficulty?: string): string => {
+    if (!difficulty) return '';
+    if (difficulty === 'low') return 'Easy';
+    if (difficulty === 'high') return 'Hard';
+    return 'Med';
   };
 
   return (
@@ -135,17 +175,33 @@ export function CreateScreen({ navigation }: Props) {
             </View>
             <Text style={styles.topicsHint}>Tap to populate prompt</Text>
             <View style={styles.topicsGrid}>
-              {HOT_TOPICS.map((topic) => (
-                <TouchableOpacity
-                  key={topic.id}
-                  style={styles.topicChip}
-                  onPress={() => handleTopicPress(topic.label)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.topicLabel}>{topic.label}</Text>
-                  <Text style={styles.topicTrend}>{topic.trend}</Text>
-                </TouchableOpacity>
-              ))}
+              {useFallback
+                ? FALLBACK_TOPICS.map((topic) => (
+                    <TouchableOpacity
+                      key={topic.id}
+                      style={styles.topicChip}
+                      onPress={() => handleTopicPress(topic.label)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.topicLabel}>{topic.label}</Text>
+                      <Text style={styles.topicTrend}>{topic.trend}</Text>
+                    </TouchableOpacity>
+                  ))
+                : trendingKeywords.map((kw, i) => (
+                    <TouchableOpacity
+                      key={`${kw.keyword}-${i}`}
+                      style={styles.topicChip}
+                      onPress={() => handleTopicPress(kw.keyword)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.topicLabel}>{kw.keyword}</Text>
+                      {(kw.difficulty || kw.searchIntent) && (
+                        <Text style={styles.topicTrend}>
+                          {kw.difficulty ? difficultyLabel(kw.difficulty) : kw.searchIntent}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  ))}
             </View>
           </View>
 

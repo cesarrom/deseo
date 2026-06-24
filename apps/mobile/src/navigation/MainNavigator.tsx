@@ -11,14 +11,17 @@ import { CreateScreen } from '../screens/create/CreateScreen';
 import { IdeasScreen } from '../screens/create/IdeasScreen';
 import { PostEditorScreen } from '../screens/create/PostEditorScreen';
 import { ContentScreen } from '../screens/content/ContentScreen';
+import { ArticleDetailScreen } from '../screens/content/ArticleDetailScreen';
 import { MetricsScreen } from '../screens/metrics/MetricsScreen';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
+import { FeedScreen } from '../screens/feed/FeedScreen';
 
-import { MainTabParamList, CreateStackParamList } from './types';
+import { MainTabParamList, CreateStackParamList, ContentStackParamList } from './types';
 import { colors, radius } from '../theme';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const CreateStack = createNativeStackNavigator<CreateStackParamList>();
+const ContentStack = createNativeStackNavigator<ContentStackParamList>();
 
 function CreateStackNavigator() {
   return (
@@ -30,11 +33,21 @@ function CreateStackNavigator() {
   );
 }
 
+function ContentStackNavigator() {
+  return (
+    <ContentStack.Navigator screenOptions={{ headerShown: false }}>
+      <ContentStack.Screen name="Content" component={ContentScreen} />
+      <ContentStack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
+    </ContentStack.Navigator>
+  );
+}
+
 const TAB_ICONS: Record<string, string> = {
   HomeTab: '⊟',
   CreateTab: '✦',
   ContentTab: '◈',
   MetricsTab: '◎',
+  FeedTab: '▤',
   SettingsTab: '◉',
 };
 
@@ -43,6 +56,7 @@ const TAB_LABELS: Record<string, string> = {
   CreateTab: 'Create',
   ContentTab: 'Content',
   MetricsTab: 'Metrics',
+  FeedTab: 'Feed',
   SettingsTab: 'Settings',
 };
 
@@ -120,8 +134,9 @@ export function MainNavigator({ onLogout }: MainNavigatorProps) {
         )}
       </Tab.Screen>
       <Tab.Screen name="CreateTab" component={CreateStackNavigator} />
-      <Tab.Screen name="ContentTab" component={ContentScreen} />
+      <Tab.Screen name="ContentTab" component={ContentStackNavigator} />
       <Tab.Screen name="MetricsTab" component={MetricsScreen} />
+      <Tab.Screen name="FeedTab" component={FeedScreen} />
       <Tab.Screen name="SettingsTab">
         {() => <SettingsScreen onLogout={onLogout} />}
       </Tab.Screen>

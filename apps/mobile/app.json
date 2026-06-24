@@ -9,7 +9,7 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.platform.mobile"
+      "bundleIdentifier": "com.deseo.mobile"
     },
     "android": {
       "package": "com.platform.mobile",
@@ -34,7 +34,8 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "./plugins/with-swift-import-fix"
     ],
     "extra": {
       "eas": {

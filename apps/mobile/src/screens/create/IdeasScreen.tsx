@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   ActivityIndicator, Animated,
@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
+import { useGenerateCustomSuggestions } from '@deseo/api-client';
 import { CreateStackParamList } from '../../navigation/types';
 import { colors, spacing, radius, typography } from '../../theme';
 import { Badge } from '../../components/ui/Badge';
@@ -16,69 +17,51 @@ type Props = {
   route: RouteProp<CreateStackParamList, 'Ideas'>;
 };
 
-type Idea = {
+type SuggestionContext = {
+  topic?: string;
+  keywords?: string[];
+  angle?: string;
+  hook?: string;
+  targetAudience?: string;
+  keySubheadings?: string[];
+  whyNow?: string;
+};
+
+type Suggestion = {
   id: string;
   title: string;
   description: string;
-  type: string;
-  typeVariant: 'primary' | 'accent' | 'violet' | 'warning';
-  readTime: string;
-  seoScore: number;
+  context?: SuggestionContext;
 };
 
-const IDEAS: Idea[] = [
-  {
-    id: '1',
-    title: "The Complete Beginner's Guide to TypeScript Generics",
-    description: "A structured walkthrough from basic type parameters to advanced constraints, with real-world examples from popular libraries.",
-    type: 'Guide',
-    typeVariant: 'primary',
-    readTime: '12 min read',
-    seoScore: 94,
-  },
-  {
-    id: '2',
-    title: '10 TypeScript Generic Patterns Every Dev Should Know',
-    description: "Practical patterns including conditional types, mapped types, and utility types — with copy-paste examples you'll use daily.",
-    type: 'Listicle',
-    typeVariant: 'accent',
-    readTime: '8 min read',
-    seoScore: 88,
-  },
-  {
-    id: '3',
-    title: 'TypeScript Generics vs. Any: When to Use Which',
-    description: "A direct comparison with benchmarks, type safety scores, and migration examples from real codebases.",
-    type: 'Comparison',
-    typeVariant: 'violet',
-    readTime: '7 min read',
-    seoScore: 82,
-  },
-  {
-    id: '4',
-    title: 'How I Reduced Bug Rate by 40% Using TypeScript Generics',
-    description: "A case study exploring how adopting strict generics transformed our team's codebase and reduced runtime errors.",
-    type: 'Case Study',
-    typeVariant: 'warning',
-    readTime: '10 min read',
-    seoScore: 79,
-  },
+const SEO_SCORE_MAP: Record<string, number> = {
+  low: 90,
+  medium: 72,
+  high: 45,
+};
+
+const TYPE_VARIANTS: Array<'primary' | 'accent' | 'violet' | 'warning'> = [
+  'primary', 'accent', 'violet', 'warning',
 ];
 
 export function IdeasScreen({ navigation, route }: Props) {
-  const { prompt } = route.params;
-  const [isLoading, setIsLoading] = useState(true);
-  const [ideas, setIdeas] = useState<Idea[]>([]);
+  const { prompt, productId } = route.params;
+  const generateMutation = useGenerateCustomSuggestions();
   const fadeAnims = useRef<Animated.Value[]>([]);
 
   useEffect(() => {
-    fadeAnims.current = IDEAS.map(() => new Animated.Value(0));
-    const timer = setTimeout(() => {
-      setIdeas(IDEAS);
-      setIsLoading(false);
-      IDEAS.forEach((_, i) => {
+    if (!productId) return;
+    generateMutation.mutate({ productId, prompt });
+  }, []);
+
+  const suggestions: Suggestion[] = (generateMutation.data as Suggestion[] | undefined) ?? [];
+
+  useEffect(() => {
+    if (suggestions.length > 0) {
+      fadeAnims.current = suggestions.map(() => new Animated.Value(0));
+      suggestions.forEach((_, i) => {
         setTimeout(() => {
-          Animated.spring(fadeAnims.current[i], {
+          Animated.spring(fadeAnims.current[i]!, {
             toValue: 1,
             tension: 50,
             friction: 8,
@@ -86,18 +69,46 @@ export function IdeasScreen({ navigation, route }: Props) {
           }).start();
         }, i * 80);
       });
-    }, 1400);
-    return () => clearTimeout(timer);
-  }, []);
+    }
+  }, [suggestions.length]);
 
-  const handleSelectIdea = (idea: Idea) => {
+  const handleSelectSuggestion = (s: Suggestion) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate('PostEditor', {
-      ideaTitle: idea.title,
-      ideaDescription: idea.description,
-      prompt,
+      suggestionId: s.id,
+      title: s.title,
+      description: s.description,
+      topic: s.context?.topic ?? s.title,
+      keywords: s.context?.keywords ?? [],
+      productId,
     });
   };
+
+  const getSeoScore = (index: number): number => {
+    return 94 - index * 6;
+  };
+
+  if (!productId) {
+    return (
+      <View style={styles.container}>
+        <SafeAreaView edges={['top']} style={styles.safe}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
+              <Text style={styles.backIcon}>←</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Ideas</Text>
+            <View style={{ width: 36 }} />
+          </View>
+        </SafeAreaView>
+        <View style={styles.errorState}>
+          <Text style={styles.errorText}>Please connect a product first from the Content tab</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.retryBtnText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -117,53 +128,80 @@ export function IdeasScreen({ navigation, route }: Props) {
       </SafeAreaView>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {isLoading ? (
+        {generateMutation.isPending ? (
           <View style={styles.loadingState}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.loadingText}>Generating ideas...</Text>
             <Text style={styles.loadingSubText}>Analyzing top-ranking content for your topic</Text>
           </View>
+        ) : generateMutation.isError ? (
+          <View style={styles.errorState}>
+            <Text style={styles.errorText}>Failed to generate ideas. Please try again.</Text>
+            <TouchableOpacity
+              style={styles.retryBtn}
+              onPress={() => generateMutation.mutate({ productId: productId ?? '', prompt })}
+            >
+              <Text style={styles.retryBtnText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <>
-            <Text style={styles.resultsLabel}>{ideas.length} ideas generated — tap to create</Text>
-            {ideas.map((idea, index) => (
-              <Animated.View
-                key={idea.id}
-                style={{
-                  opacity: fadeAnims.current[index] ?? 1,
-                  transform: [
-                    {
-                      translateY: fadeAnims.current[index]?.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [20, 0],
-                      }) ?? 0,
-                    },
-                  ],
-                }}
-              >
-                <TouchableOpacity
-                  style={styles.ideaCard}
-                  onPress={() => handleSelectIdea(idea)}
-                  activeOpacity={0.75}
+            <Text style={styles.resultsLabel}>{suggestions.length} ideas generated — tap to create</Text>
+            {suggestions.map((s, index) => {
+              const fadeAnim = fadeAnims.current[index];
+              const seoScore = getSeoScore(index);
+
+              return (
+                <Animated.View
+                  key={s.id}
+                  style={{
+                    opacity: fadeAnim ?? 1,
+                    transform: [
+                      {
+                        translateY: fadeAnim?.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [20, 0],
+                        }) ?? 0,
+                      },
+                    ],
+                  }}
                 >
-                  <View style={styles.ideaHeader}>
-                    <Badge label={idea.type} variant={idea.typeVariant} />
-                    <View style={styles.seoScore}>
-                      <Text style={styles.seoScoreValue}>{idea.seoScore}</Text>
-                      <Text style={styles.seoScoreLabel}>SEO</Text>
+                  <TouchableOpacity
+                    style={styles.ideaCard}
+                    onPress={() => handleSelectSuggestion(s)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.ideaHeader}>
+                      <Badge
+                        label={s.context?.angle ?? 'Article'}
+                        variant={TYPE_VARIANTS[index % TYPE_VARIANTS.length]!}
+                      />
+                      <View style={styles.seoScore}>
+                        <Text style={styles.seoScoreValue}>{seoScore}</Text>
+                        <Text style={styles.seoScoreLabel}>SEO</Text>
+                      </View>
                     </View>
-                  </View>
-                  <Text style={styles.ideaTitle}>{idea.title}</Text>
-                  <Text style={styles.ideaDesc}>{idea.description}</Text>
-                  <View style={styles.ideaFooter}>
-                    <Text style={styles.readTime}>◎ {idea.readTime}</Text>
-                    <View style={styles.selectHint}>
-                      <Text style={styles.selectHintText}>Generate post →</Text>
+                    <Text style={styles.ideaTitle}>{s.title}</Text>
+                    <Text style={styles.ideaDesc}>{s.description}</Text>
+                    {s.context?.keywords && s.context.keywords.length > 0 && (
+                      <View style={styles.keywordsRow}>
+                        {s.context.keywords.slice(0, 3).map((kw) => (
+                          <View key={kw} style={styles.keywordChip}>
+                            <Text style={styles.keywordText}>{kw}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                    <View style={styles.ideaFooter}>
+                      <Text style={styles.readTime}>◎ {s.context?.targetAudience ?? 'General audience'}</Text>
+                      <View style={styles.selectHint}>
+                        <Text style={styles.selectHintText}>Generate post →</Text>
+                      </View>
                     </View>
-                  </View>
-                </TouchableOpacity>
-              </Animated.View>
-            ))}
+                  </TouchableOpacity>
+                </Animated.View>
+              );
+            })}
           </>
         )}
         <View style={{ height: 40 }} />
@@ -209,6 +247,23 @@ const styles = StyleSheet.create({
   },
   loadingText: { ...typography.h3, color: colors.text },
   loadingSubText: { ...typography.small, color: colors.textMuted, textAlign: 'center' },
+  errorState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+    gap: 16,
+  },
+  errorText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+  retryBtn: {
+    backgroundColor: colors.primaryDim,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  retryBtnText: { ...typography.bodyMedium, color: colors.primary, fontWeight: '600' },
   resultsLabel: {
     ...typography.small,
     color: colors.textMuted,
@@ -249,8 +304,22 @@ const styles = StyleSheet.create({
     ...typography.small,
     color: colors.textSecondary,
     lineHeight: 20,
+    marginBottom: 10,
+  },
+  keywordsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
     marginBottom: 14,
   },
+  keywordChip: {
+    paddingHorizontal: 8, paddingVertical: 3,
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  keywordText: { ...typography.tiny, color: colors.textMuted },
   ideaFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -259,7 +328,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     paddingTop: 12,
   },
-  readTime: { ...typography.small, color: colors.textMuted },
+  readTime: { ...typography.small, color: colors.textMuted, flex: 1 },
   selectHint: {
     backgroundColor: colors.primaryDim,
     paddingHorizontal: 12,

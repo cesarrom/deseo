@@ -38,7 +38,9 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "prebuild:ios": "expo prebuild --platform ios && node scripts/strip-push-entitlement.js",
+    "prebuild:ios:clean": "expo prebuild --platform ios --clean && node scripts/strip-push-entitlement.js"
   },
   "private": true
 }

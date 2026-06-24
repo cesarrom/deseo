@@ -9,24 +9,28 @@ export type MainTabParamList = {
   CreateTab: undefined;
   ContentTab: undefined;
   MetricsTab: undefined;
+  FeedTab: undefined;
   SettingsTab: undefined;
 };
 
 export type CreateStackParamList = {
   Create: undefined;
-  Ideas: { prompt: string };
-  PostEditor: { ideaTitle: string; ideaDescription: string; prompt: string };
-  Publish: { postId: string; postTitle: string; content: string };
+  Ideas: { prompt: string; productId?: string };
+  PostEditor: {
+    suggestionId?: string;
+    title: string;
+    description: string;
+    topic: string;
+    keywords: string[];
+    productId?: string;
+  };
 };
 
 export type ContentStackParamList = {
   Content: undefined;
-  ProductDetail: { productId: string; productTitle: string };
+  ArticleDetail: { articleId: string; articleTitle: string };
 };
 
 export type SettingsStackParamList = {
   Settings: undefined;
-  Clients: undefined;
-  Connectors: undefined;
-  ConnectorDetail: { connectorId: string; connectorName: string };
 };

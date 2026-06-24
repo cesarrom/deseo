@@ -4,17 +4,23 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useProducts, useSuggestions, useArticles } from '@deseo/api-client';
 import { useClient } from '../../providers/ClientProvider';
+import { ContentStackParamList } from '../../navigation/types';
 import { colors, spacing, radius, typography } from '../../theme';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 
 const TABS = ['Products', 'Suggestions', 'Published'];
 
+type ContentNavProp = NativeStackNavigationProp<ContentStackParamList, 'Content'>;
+
 export function ContentScreen() {
   const [activeTab, setActiveTab] = useState(0);
   const { activeClientId } = useClient();
+  const navigation = useNavigation<ContentNavProp>();
   const enabled = !!activeClientId;
 
   const { data: products, isLoading: productsLoading } = useProducts({ enabled });
@@ -122,20 +128,34 @@ export function ContentScreen() {
           {activeTab === 2 && (
             <>
               {published.map((a) => (
-                <Card key={a.id} style={styles.publishedCard} variant="raised">
-                  <Text style={styles.publishedTitle}>{a.title}</Text>
-                  <View style={styles.publishedMeta}>
-                    <Text style={styles.publishedDate}>
-                      {new Date(a.createdAt).toLocaleDateString()}
-                    </Text>
-                    {a.targetCms && (
-                      <View style={styles.channelChip}>
-                        <Text style={styles.channelChipText}>{a.targetCms}</Text>
+                <TouchableOpacity
+                  key={a.id}
+                  onPress={() => navigation.navigate('ArticleDetail', {
+                    articleId: a.id,
+                    articleTitle: a.title,
+                  })}
+                  activeOpacity={0.75}
+                >
+                  <Card style={styles.publishedCard} variant="raised">
+                    <View style={styles.publishedCardInner}>
+                      <View style={styles.publishedInfo}>
+                        <Text style={styles.publishedTitle}>{a.title}</Text>
+                        <View style={styles.publishedMeta}>
+                          <Text style={styles.publishedDate}>
+                            {new Date(a.createdAt).toLocaleDateString()}
+                          </Text>
+                          {a.targetCms && (
+                            <View style={styles.channelChip}>
+                              <Text style={styles.channelChipText}>{a.targetCms}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Badge label={a.status} variant="accent" />
                       </View>
-                    )}
-                  </View>
-                  <Badge label={a.status} variant="accent" />
-                </Card>
+                      <Text style={styles.arrowIcon}>›</Text>
+                    </View>
+                  </Card>
+                </TouchableOpacity>
               ))}
               {published.length === 0 && (
                 <Card style={styles.emptyCard}>
@@ -190,6 +210,11 @@ const styles = StyleSheet.create({
   suggestionTitle: { ...typography.bodyMedium, color: colors.text, marginBottom: 6 },
   suggestionDesc: { ...typography.small, color: colors.textSecondary, lineHeight: 20 },
   publishedCard: { marginBottom: 10, padding: 14 },
+  publishedCardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  publishedInfo: { flex: 1 },
   publishedTitle: { ...typography.bodyMedium, color: colors.text, marginBottom: 8 },
   publishedMeta: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   publishedDate: { ...typography.small, color: colors.textMuted },
@@ -199,6 +224,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
   },
   channelChipText: { ...typography.tiny, color: colors.primary, fontWeight: '600' },
+  arrowIcon: { fontSize: 22, color: colors.textMuted, marginLeft: 8 },
   emptyCard: { padding: spacing.xl, alignItems: 'center' },
   emptyText: { ...typography.bodyMedium, color: colors.text, marginBottom: 8 },
   emptySubText: { ...typography.small, color: colors.textMuted, textAlign: 'center' },

@@ -4,7 +4,7 @@ type MutOpts<T extends (...args: never[]) => unknown> = Parameters<T>[0];
 
 export const useJobs = (
   input?: { clientId?: string; productId?: string },
-  options?: { enabled?: boolean },
+  options?: { enabled?: boolean; refetchInterval?: number | false },
 ) => trpc.job.list.useQuery(input ?? {}, options);
 
 export const useCreateJob = (
