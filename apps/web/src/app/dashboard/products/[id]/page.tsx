@@ -40,7 +40,6 @@ import {
   Search,
   BookOpen,
   Flame,
-  Settings,
   Zap,
   Trash2
 } from 'lucide-react';
@@ -394,11 +393,8 @@ export default function ProductConsolePage() {
             {reevaluateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-purple-500" />}
             Reevaluate Product
           </Button>
-          <Button variant="outline" className="gap-2 bg-white text-slate-700 border-slate-200 shadow-sm">
-            <Settings className="h-4 w-4" /> Configure
-          </Button>
           <Button className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm" asChild>
-            <Link href={`/dashboard/intelligence/generate?productId=${product.id}`}>
+            <Link href="/dashboard/intelligence">
               <Plus className="h-4 w-4" /> New Article
             </Link>
           </Button>

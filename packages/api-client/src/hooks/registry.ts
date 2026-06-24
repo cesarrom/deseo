@@ -49,3 +49,7 @@ export const useExecuteAction = (
 export const useGenerateAndPublish = (
   options?: MutOpts<typeof trpc.registry.generateAndPublish.useMutation>,
 ) => trpc.registry.generateAndPublish.useMutation(options);
+
+export const useRefreshAnalyticsData = (
+  options?: MutOpts<typeof trpc.registry.refreshAnalyticsData.useMutation>,
+) => trpc.registry.refreshAnalyticsData.useMutation(options);
