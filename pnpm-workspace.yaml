@@ -3,3 +3,12 @@ packages:
   - 'packages/*'
   - 'services/*'
   - 'temporal'
+
+# Pin a single React across the monorepo. Mobile (react-native 0.81.5, peer
+# ^19.1.0) and web (next 16, peer ^19.0.0) both accept 19.1.0 — the version
+# Expo SDK 54 is built against. A single version means one physical copy, so
+# Metro/Next never bundle two Reacts (cause of "Invalid hook call").
+# As of pnpm 10.32 overrides live here, not in package.json's "pnpm" field.
+overrides:
+  react: 19.1.0
+  react-dom: 19.1.0

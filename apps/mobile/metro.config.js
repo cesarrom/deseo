@@ -37,14 +37,8 @@ config.resolver.resolverMainFields = ['react-native', 'browser', 'main'];
 // server deps (Temporal, postgres, drizzle) are never bundled. The block
 // list below is a safety net in case a future change turns that import
 // into a value import, preventing a hard bundling failure at runtime.
-const { exclusionList } = require('metro-config');
-config.resolver.blockList = exclusionList([
-  /@temporalio\//,
-  /\/packages\/db\//,
-  /\/packages\/integrations\//,
-  // Ignore the api app itself — only @deseo/api-client is needed on mobile.
-  /\/apps\/api\/src\//,
-]);
+// Metro 0.81+ accepts a RegExp directly — exclusionList was removed.
+config.resolver.blockList = /@temporalio\/|\/packages\/db\/|\/packages\/integrations\/|\/apps\/api\/src\//;
 
 // ── Cache ──────────────────────────────────────────────────────────────────
 // Place Metro's transform cache outside the monorepo root so it survives

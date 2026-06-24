@@ -16,7 +16,7 @@ dist
 
 # Turbo
 .turbo
-
+.metro-cache
 # Environment
 .env
 .env*.local

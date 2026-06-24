@@ -3,13 +3,24 @@
     "name": "mobile",
     "slug": "mobile",
     "version": "1.0.0",
-    "scheme": "platform-mobile",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.deseo.mobile"
+      "bundleIdentifier": "com.deseo.mobile",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Used to connect to the Metro development server on your local network.",
+        "NSBonjourServices": ["_react-native-packager._tcp"],
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "platform-mobile",
+              "com.googleusercontent.apps.101052695634-j6037dq51l04i3134cfdbbr8v4uqnjkp"
+            ]
+          }
+        ]
+      }
     },
     "android": {
       "package": "com.platform.mobile",
