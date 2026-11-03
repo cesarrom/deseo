@@ -59,7 +59,7 @@ pnpm dev                                                # turbo runs all apps
 
 Local services: PostgreSQL on `localhost:5432`, Redis on `6379`, Temporal on `7233` and its UI on `http://localhost:8080`. See [`docker/README.md`](docker/README.md) and [`QUICKSTART.md`](QUICKSTART.md) for details.
 
-Environment variables (see `.env.example`): `DATABASE_URL`, `REDIS_URL`, `TEMPORAL_URL`, `OPENROUTER_API_KEY`, GitHub / GitLab / Google OAuth client IDs and secrets, `DOKPLOY_API_URL` / `DOKPLOY_API_KEY`, and `NEXTAUTH_URL`. Each connector has its own `.env.example`.
+Environment variables (see `.env.example`): `DATABASE_URL`, `REDIS_URL`, `TEMPORAL_URL`, `OPENROUTER_API_KEY`, GitHub / GitLab / Google OAuth client IDs and secrets, `DOKPLOY_API_URL` / `DOKPLOY_API_KEY`, `NEXTAUTH_URL`, and `GITHUB_APP_PRIVATE_KEY_BASE64` (the GitHub App key used by the GitHub connectors; the `.pem` file is never committed). `DATABASE_ADMIN_URL` is optional and enables a one-time database grant at API start. Each connector has its own `.env.example`.
 
 Other root scripts: `pnpm build`, `pnpm test`, `pnpm lint`, `pnpm format`, `pnpm db:generate`, `pnpm clean`.
 

@@ -29,15 +29,23 @@ app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
 
-// Load GitHub App Private Key for Server-to-Server authentication
+// Load GitHub App Private Key for Server-to-Server authentication.
+// Order: GITHUB_APP_PRIVATE_KEY_BASE64, GITHUB_APP_PRIVATE_KEY (literal \n allowed), then a PEM file at
+// GITHUB_APP_PRIVATE_KEY_PATH (default ../github_pk.pem). The key must never be committed.
 let githubPrivateKey = '';
 try {
-  const pkPath = path.join(__dirname, '../github_pk.pem');
-  if (fs.existsSync(pkPath)) {
+  const pkPath = process.env.GITHUB_APP_PRIVATE_KEY_PATH || path.join(__dirname, '../github_pk.pem');
+  if (process.env.GITHUB_APP_PRIVATE_KEY_BASE64) {
+    githubPrivateKey = Buffer.from(process.env.GITHUB_APP_PRIVATE_KEY_BASE64, 'base64').toString('utf8');
+  } else if (process.env.GITHUB_APP_PRIVATE_KEY) {
+    githubPrivateKey = process.env.GITHUB_APP_PRIVATE_KEY.replace(/\\n/g, '\n');
+  } else if (fs.existsSync(pkPath)) {
     githubPrivateKey = fs.readFileSync(pkPath, 'utf8');
+  }
+  if (githubPrivateKey) {
     console.log('🔑 [GitHub] Successfully loaded GitHub App Private Key');
   } else {
-    console.warn('⚠️ [GitHub] github_pk.pem not found. Background tasks requiring App authentication may fail.');
+    console.warn('⚠️ [GitHub] GitHub App private key not configured (set GITHUB_APP_PRIVATE_KEY_BASE64). Background tasks requiring App authentication may fail.');
   }
 } catch (error) {
   console.error('❌ [GitHub] Error reading Private Key:', error);

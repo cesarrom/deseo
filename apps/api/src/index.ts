@@ -42,7 +42,8 @@ app.listen(PORT, async () => {
   
   // Database Admin setup for Temporal and deseo user CREATEDB privilege
   try {
-    const adminUrl = process.env.DATABASE_ADMIN_URL as string;
+    const adminUrl = process.env.DATABASE_ADMIN_URL;
+    if (!adminUrl) throw new Error('DATABASE_ADMIN_URL is not set; skipping one-time admin setup');
     console.log('🔑 Connecting to database as superuser to verify/grant permissions...');
     const sqlClient = postgres(adminUrl);
     

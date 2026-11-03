@@ -31,7 +31,6 @@ pnpm-debug.log*
 # OS
 .DS_Store
 *.pem
-!github_pk.pem
 
 # IDE
 .vscode/*
@@ -46,3 +45,10 @@ pnpm-debug.log*
 
 # Docker
 docker-compose.override.yml
+
+# Secrets and credentials: never commit these
+.env.*
+*.key
+service-account*.json
+!.env.example
+!.env.sample
