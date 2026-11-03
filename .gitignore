@@ -50,5 +50,8 @@ docker-compose.override.yml
 .env.*
 *.key
 service-account*.json
+
+# TypeScript build artifacts
+*.tsbuildinfo
 !.env.example
 !.env.sample
